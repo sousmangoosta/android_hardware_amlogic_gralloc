@@ -24,33 +24,23 @@ include $(CLEAR_VARS)
 LOCAL_PRELINK_MODULE := false
 LOCAL_MODULE_PATH := $(TARGET_OUT_SHARED_LIBRARIES)/hw
 
-MALI_DDK_PATH := hardware/arm/mali
-
 LOCAL_MODULE := gralloc.amlogic
 #LOCAL_MODULE_TAGS := optional
 
-# Which DDK are we building for?
-ifneq (,$(wildcard $(MALI_DDK_PATH)/ump/))
-# Mali-T6xx DDK
-LOCAL_SHARED_LIBRARIES := liblog libcutils libGLESv1_CM libGLES_mali
-
-# All include files are accessed from the DDK root
-DDK_PATH := $(LOCAL_PATH)/../../..
-UMP_HEADERS_PATH := $(DDK_PATH)/kernel/include
-LOCAL_C_INCLUDES := $(DDK_PATH) $(UMP_HEADERS_PATH)
-
-LOCAL_CFLAGS:= -DLOG_TAG=\"gralloc\" -DGRALLOC_16_BITS -DSTANDARD_LINUX_SCREEN
-else
-# Mali-200/300/400MP DDK
-SHARED_MEM_LIBS := libUMP
-LOCAL_SHARED_LIBRARIES := liblog libcutils libMali libGLESv1_CM $(SHARED_MEM_LIBS) libutils libhardware
-
-# Include the UMP header files
-LOCAL_C_INCLUDES := $(LOCAL_PATH)/ump system/core/include/
-
 #LOCAL_CFLAGS:= -DLOG_TAG=\"gralloc\" -DGRALLOC_32_BITS -DSTANDARD_LINUX_SCREEN
 LOCAL_CFLAGS:= -DLOG_TAG=\"gralloc\" -DGRALLOC_32_BITS 
+
+ifeq ($(USING_ION),true)
+SHARED_MEM_LIBS := libion
+LOCAL_C_INCLUDES += system/core/include/
+LOCAL_CFLAGS+= -DUSING_ION=1
+
+else
+SHARED_MEM_LIBS := libUMP
+LOCAL_C_INCLUDES += $(LOCAL_PATH)/ump
 endif
+
+LOCAL_SHARED_LIBRARIES := liblog libcutils libMali libGLESv1_CM $(SHARED_MEM_LIBS) libutils libhardware
 
 LOCAL_SRC_FILES := \
 	gralloc_module.cpp \
