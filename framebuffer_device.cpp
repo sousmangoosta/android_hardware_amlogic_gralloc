@@ -329,7 +329,8 @@ int init_frame_buffer_locked(struct private_module_t* module)
 
 	if (refreshRate == 0)
 	{
-		refreshRate = 50*1000;  // 50 Hz
+		//refreshRate = 50*1000;  // 50 Hz
+		refreshRate = 60*1000;  // 60 Hz
 	}
 
 	if (int(info.width) <= 0 || int(info.height) <= 0)
