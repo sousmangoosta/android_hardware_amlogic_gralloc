@@ -172,6 +172,7 @@ struct private_handle_t
 	static const int sNumInts = 10 + GRALLOC_ARM_UMP_NUM_INTS + GRALLOC_ARM_DMA_BUF_NUM_INTS;
 	static const int sNumFds = GRALLOC_ARM_NUM_FDS;
 	static const int sMagic = 0x3141592;
+	int format;
 
 #if GRALLOC_ARM_UMP_MODULE
 	private_handle_t(int flags, int usage, int size, int base, int lock_state, ump_secure_id secure_id, ump_handle handle):
