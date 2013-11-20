@@ -105,7 +105,11 @@ static int gralloc_alloc_buffer(alloc_device_t* dev, size_t size, int usage, buf
 		int shared_fd;
 		int ret;
 
-		ret = ion_alloc(m->ion_client, size, 0, ION_HEAP_SYSTEM_MASK, 0, &ion_hnd);
+		if (usage & GRALLOC_USAGE_PRIVATE_1) {
+			ret = ion_alloc(m->ion_client, size, 0, ION_HEAP_CARVEOUT_MASK, 0, &ion_hnd);
+		} else {
+			ret = ion_alloc(m->ion_client, size, 0, ION_HEAP_SYSTEM_MASK, 0, &ion_hnd);
+		}
 		if ( ret != 0) 
 		{
 			AERR("Failed to ion_alloc from ion_client:%d", m->ion_client);
