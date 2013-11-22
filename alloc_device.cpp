@@ -336,8 +336,11 @@ static int alloc_device_alloc(alloc_device_t* dev, int w, int h, int format, int
 			case HAL_PIXEL_FORMAT_YCrCb_420_SP:
 			case HAL_PIXEL_FORMAT_YV12:
 				stride = GRALLOC_ALIGN(w, 16);
+			if (usage & GRALLOC_USAGE_PRIVATE_1){
+				size = h * (GRALLOC_ALIGN(w, 32) + GRALLOC_ALIGN(stride/2,16));
+			}else {
 				size = h * (stride + GRALLOC_ALIGN(stride/2,16));
-
+			}
 				break;
 			default:
 				return -EINVAL;
