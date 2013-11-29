@@ -263,7 +263,6 @@ int init_frame_buffer_locked(struct private_module_t* module)
 		/*
 	 	 * Explicitly request 8/8/8/8
 	 	 */
-#if 0
 		info.bits_per_pixel = 32;
 		info.red.offset     = 0;
 		info.red.length     = 8;
@@ -273,17 +272,6 @@ int init_frame_buffer_locked(struct private_module_t* module)
 		info.blue.length    = 8;
 		info.transp.offset  = 24;
 		info.transp.length  = 8;
-#else 
-	info.bits_per_pixel = 32;
-	info.red.offset     = 16;
-	info.red.length     = 8;
-	info.green.offset   = 8;
-	info.green.length   = 8;
-	info.blue.offset    = 0;
-	info.blue.length    = 8;
-	info.transp.offset  = 0;
-	info.transp.length  = 0;
-#endif
 	}
 
 	/*
