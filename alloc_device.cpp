@@ -105,7 +105,11 @@ static int gralloc_alloc_buffer(alloc_device_t* dev, size_t size, int usage, buf
 		int shared_fd;
 		int ret;
 
-		ret = ion_alloc(m->ion_client, size, 0, ION_HEAP_SYSTEM_MASK, 0, &ion_hnd);
+		if (usage & GRALLOC_USAGE_PRIVATE_1) {
+			ret = ion_alloc(m->ion_client, size, 0, ION_HEAP_CARVEOUT_MASK, 0, &ion_hnd);
+		} else {
+			ret = ion_alloc(m->ion_client, size, 0, ION_HEAP_SYSTEM_MASK, 0, &ion_hnd);
+		}
 		if ( ret != 0) 
 		{
 			AERR("Failed to ion_alloc from ion_client:%d", m->ion_client);
@@ -332,8 +336,11 @@ static int alloc_device_alloc(alloc_device_t* dev, int w, int h, int format, int
 			case HAL_PIXEL_FORMAT_YCrCb_420_SP:
 			case HAL_PIXEL_FORMAT_YV12:
 				stride = GRALLOC_ALIGN(w, 16);
+			if (usage & GRALLOC_USAGE_PRIVATE_1){
+				size = h * (GRALLOC_ALIGN(w, 32) + GRALLOC_ALIGN(stride/2,16));
+			}else {
 				size = h * (stride + GRALLOC_ALIGN(stride/2,16));
-
+			}
 				break;
 			default:
 				return -EINVAL;
