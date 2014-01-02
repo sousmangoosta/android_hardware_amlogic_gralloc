@@ -68,11 +68,17 @@ struct fb_dmabuf_export
 
 #endif
 
+#ifdef ENABLE_FB_TRIPLE_BUFFERS
+#define NUM_FB_BUFFERS 3
+#else
 #define NUM_FB_BUFFERS 2
+#endif
 
 #if GRALLOC_ARM_UMP_MODULE
 #include <ump/ump.h>
 #endif
+
+unsigned int get_num_fb_buffers();
 
 struct private_handle_t;
 
