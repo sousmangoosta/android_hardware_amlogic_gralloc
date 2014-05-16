@@ -411,6 +411,10 @@ static int alloc_device_alloc(alloc_device_t* dev, int w, int h, int format, int
 
 	{
 		err = gralloc_alloc_buffer(dev, size, usage, pHandle);
+		if (err < 0)
+		{
+			return err;
+		}
 		private_handle_t* hnd = (private_handle_t*)(*pHandle);
 		hnd->format = format;
 
