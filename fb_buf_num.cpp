@@ -31,7 +31,8 @@
 #include "gralloc_helper.h"
 #include "framebuffer_device.h"
 
-unsigned int get_num_fb_buffers() {
+unsigned int get_num_fb_buffers()
+{
 	//ALOGD("****************************** %d\n",NUM_FB_BUFFERS);
 	return NUM_FB_BUFFERS;
 }

@@ -38,7 +38,7 @@ LOCAL_MODULE := gralloc.amlogic
 #LOCAL_MODULE_TAGS := optional
 
 #LOCAL_CFLAGS:= -DLOG_TAG=\"gralloc\" -DGRALLOC_32_BITS -DSTANDARD_LINUX_SCREEN
-LOCAL_CFLAGS:= -DLOG_TAG=\"gralloc\" -DGRALLOC_32_BITS 
+LOCAL_CFLAGS:= -DLOG_TAG=\"gralloc\" -DGRALLOC_32_BITS  -DPLATFORM_SDK_VERSION=$(PLATFORM_SDK_VERSION)
 
 ifeq ($(USING_ION),true)
 SHARED_MEM_LIBS := libion
@@ -55,7 +55,7 @@ LOCAL_CFLAGS += -DENABLE_FB_TRIPLE_BUFFERS
 endif
 
 
-LOCAL_SHARED_LIBRARIES := liblog libcutils libMali libGLESv1_CM $(SHARED_MEM_LIBS) libutils libhardware
+LOCAL_SHARED_LIBRARIES := liblog libcutils libGLESv1_CM $(SHARED_MEM_LIBS) libutils libhardware libfbcnf
 
 LOCAL_SRC_FILES := \
 	gralloc_module.cpp \
