@@ -24,6 +24,8 @@ include $(CLEAR_VARS)
 ifeq ($(TARGET_USE_TRIPLE_FB_BUFFERS), true)
 LOCAL_CFLAGS += -DENABLE_FB_TRIPLE_BUFFERS
 endif
+LOCAL_C_INCLUDES += system/core/libion/include/ \
+		system/core/libion/kernel-headers
 LOCAL_PRELINK_MODULE := false
 LOCAL_SRC_FILES := fb_buf_num.cpp
 LOCAL_MODULE := libfbcnf
@@ -40,9 +42,11 @@ LOCAL_MODULE := gralloc.amlogic
 #LOCAL_CFLAGS:= -DLOG_TAG=\"gralloc\" -DGRALLOC_32_BITS -DSTANDARD_LINUX_SCREEN
 LOCAL_CFLAGS:= -DLOG_TAG=\"gralloc\" -DGRALLOC_32_BITS  -DPLATFORM_SDK_VERSION=$(PLATFORM_SDK_VERSION)
 
+USING_ION=true
 ifeq ($(USING_ION),true)
 SHARED_MEM_LIBS := libion
-LOCAL_C_INCLUDES += system/core/include/
+LOCAL_C_INCLUDES += system/core/libion/include/ \
+		system/core/libion/kernel-headers
 LOCAL_CFLAGS+= -DUSING_ION=1
 
 else

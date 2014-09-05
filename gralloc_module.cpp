@@ -24,20 +24,13 @@
 #include <hardware/hardware.h>
 #include <hardware/gralloc.h>
 
-#include "gralloc_priv.h"
-#include "alloc_device.h"
-#include "framebuffer_device.h"
-
-#if GRALLOC_ARM_UMP_MODULE
-#include <ump/ump_ref_drv.h>
-static int s_ump_is_open = 0;
-#endif
-
-#if GRALLOC_ARM_DMA_BUF_MODULE
 #include <linux/ion.h>
 #include <ion/ion.h>
 #include <sys/mman.h>
-#endif
+
+#include "gralloc_priv.h"
+#include "alloc_device.h"
+#include "framebuffer_device.h"
 
 static pthread_mutex_t s_map_lock = PTHREAD_MUTEX_INITIALIZER;
 

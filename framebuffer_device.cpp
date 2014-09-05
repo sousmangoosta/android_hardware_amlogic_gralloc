@@ -26,6 +26,9 @@
 #include <cutils/atomic.h>
 #include <hardware/hardware.h>
 #include <hardware/gralloc.h>
+#include <sys/ioctl.h>
+#include <ion/ion.h>
+#include <linux/ion.h>
 
 #include <GLES/gl.h>
 

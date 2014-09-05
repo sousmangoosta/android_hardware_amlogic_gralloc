@@ -26,24 +26,16 @@
 #include <hardware/gralloc.h>
 
 #include <sys/ioctl.h>
+#include <linux/ion.h>
+#include <ion/ion.h>
 
 #include "alloc_device.h"
 #include "gralloc_priv.h"
 #include "gralloc_helper.h"
 #include "framebuffer_device.h"
 
-#if GRALLOC_ARM_UMP_MODULE
-#include <ump/ump.h>
-#include <ump/ump_ref_drv.h>
-#endif
-
-#if GRALLOC_ARM_DMA_BUF_MODULE
-#include <linux/ion.h>
-#include <ion/ion.h>
-#endif
-
 #define GRALLOC_ALIGN( value, base ) (((value) + ((base) - 1)) & ~((base) - 1))
-
+#define GRALLOC_USAGE_AML_VIDEO_OVERLAY GRALLOC_USAGE_PRIVATE_0
 
 #if GRALLOC_SIMULATE_FAILURES
 #include <cutils/properties.h>
@@ -101,7 +93,7 @@ static int gralloc_alloc_buffer(alloc_device_t *dev, size_t size, int usage, buf
 #if GRALLOC_ARM_DMA_BUF_MODULE
 	{
 		private_module_t *m = reinterpret_cast<private_module_t *>(dev->common.module);
-		struct ion_handle *ion_hnd;
+		ion_user_handle_t ion_hnd;
 		unsigned char *cpu_ptr;
 		int shared_fd;
 		int ret;

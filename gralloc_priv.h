@@ -179,7 +179,7 @@ struct private_handle_t
 	int     offset;
 
 #if GRALLOC_ARM_DMA_BUF_MODULE
-	struct ion_handle *ion_hnd;
+	ion_user_handle_t ion_hnd;
 #define GRALLOC_ARM_DMA_BUF_NUM_INTS 2
 #else
 #define GRALLOC_ARM_DMA_BUF_NUM_INTS 0

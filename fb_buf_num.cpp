@@ -25,6 +25,8 @@
 #include <hardware/gralloc.h>
 
 #include <sys/ioctl.h>
+#include <ion/ion.h>
+#include <linux/ion.h>
 
 #include "alloc_device.h"
 #include "gralloc_priv.h"
