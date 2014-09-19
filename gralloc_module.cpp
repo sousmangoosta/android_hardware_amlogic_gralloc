@@ -16,13 +16,17 @@
  * limitations under the License.
  */
 
+#define LOG_NDEBUG 0
+#define LOG_TAG "Gralloc"
+
 #include <errno.h>
 #include <pthread.h>
-
 #include <cutils/log.h>
 #include <cutils/atomic.h>
 #include <hardware/hardware.h>
 #include <hardware/gralloc.h>
+
+#include <hardware/hwcomposer_defs.h>
 
 #include <linux/ion.h>
 #include <ion/ion.h>
@@ -87,8 +91,58 @@ static int gralloc_register_buffer(gralloc_module_t const *module, buffer_handle
 
 	if (hnd->flags & private_handle_t::PRIV_FLAGS_FRAMEBUFFER)
 	{
-		AERR("Can't register buffer 0x%p as it is a framebuffer", handle);
-	}
+	    ALOGD("gralloc_register_buffer register framebuffer");
+        hw_module_t * pmodule = NULL;
+		private_module_t *m = NULL;
+		if (hw_get_module(GRALLOC_HARDWARE_MODULE_ID, (const hw_module_t **)&pmodule) == 0)
+		{
+			m = reinterpret_cast<private_module_t *>(pmodule);
+		}
+		else
+		{
+			AERR("Could not get gralloc module for handle: 0x%x", (unsigned int)hnd);
+			retval = -errno;
+			goto cleanup;
+		}
+
+        framebuffer_mapper_t* fbMaper = &(m->fb_primary);
+        if(hnd->usage & GRALLOC_USAGE_EXTERNAL_DISP){
+            ALOGD("register external display");
+            fbMaper = &(m->fb_external);
+        }
+        if(!fbMaper->framebuffer) {
+            fbMaper->framebuffer = new private_handle_t(hnd->flags, hnd->usage, hnd->size, hnd->base,0, dup(hnd->fd), 0);
+            fbMaper->bufferSize = hnd->offset;
+            fbMaper->numBuffers = fbMaper->framebuffer->size / fbMaper->bufferSize;
+            fbMaper->bufferMask = 0;
+
+             /*
+        	 * map the framebuffer
+        	 */
+        	void* vaddr = mmap(0, fbMaper->framebuffer->size, PROT_READ|PROT_WRITE, MAP_SHARED, fbMaper->framebuffer->fd, 0);
+        	if (vaddr == MAP_FAILED) 
+        	{
+        		AERR( "Error mapping the framebuffer (%s)", strerror(errno) );
+        		return -errno;
+        	}
+        	memset(vaddr, 0, fbMaper->framebuffer->size);
+            fbMaper->framebuffer->base = vaddr;
+
+        #if GRALLOC_ARM_UMP_MODULE
+        	#ifdef IOCTL_GET_FB_UMP_SECURE_ID
+        	ioctl(fbMaper->framebuffer->fd, IOCTL_GET_FB_UMP_SECURE_ID, &fbMaper->framebuffer->ump_id);
+        	#endif
+        	if ( (int)UMP_INVALID_SECURE_ID != fbMaper->framebuffer->ump_id )
+        	{
+        		AINF("framebuffer accessed with UMP secure ID %i\n", fbMaper->framebuffer->ump_id);
+        	}
+        #endif
+            ALOGD("register frame buffer count %d ",fbMaper->numBuffers );
+        } else {
+            ALOGE("ERROR::register frambuffer again!!!");
+        }
+        
+    }
 	else if (hnd->flags & private_handle_t::PRIV_FLAGS_USES_UMP)
 	{
 #if GRALLOC_ARM_UMP_MODULE
@@ -198,8 +252,39 @@ static int gralloc_unregister_buffer(gralloc_module_t const *module, buffer_hand
 
 	if (hnd->flags & private_handle_t::PRIV_FLAGS_FRAMEBUFFER)
 	{
-		AERR("Can't unregister buffer 0x%p as it is a framebuffer", handle);
-	}
+        pthread_mutex_lock(&s_map_lock);
+
+        ALOGD("unregister framebuffer ");
+		//AERR( "Can't unregister buffer 0x%x as it is a framebuffer", (unsigned int)handle );
+        hw_module_t * pmodule = NULL;
+        private_module_t *m = NULL;
+		if (hw_get_module(GRALLOC_HARDWARE_MODULE_ID, (const hw_module_t **)&pmodule) == 0)
+		{
+			m = reinterpret_cast<private_module_t *>(pmodule);
+            framebuffer_mapper_t* fbMaper = &(m->fb_primary);
+            if(hnd->usage & GRALLOC_USAGE_EXTERNAL_DISP){
+                ALOGD("unregister external display");
+                fbMaper = &(m->fb_external);
+            }
+
+            if(fbMaper->framebuffer) {
+                munmap((void*)fbMaper->framebuffer->base,fbMaper->framebuffer->size);
+                close(fbMaper->framebuffer->fd);
+                //reset framebuffer info
+                delete fbMaper->framebuffer;
+                fbMaper->framebuffer = 0;
+                fbMaper->bufferMask = 0;
+                fbMaper->numBuffers = 0;
+            } else {
+                AERR("Can't unregister a not exist buffers: 0x%x", (unsigned int)hnd);
+            }
+
+		}
+		else
+		{
+			AERR("Could not get gralloc module for handle: 0x%x", (unsigned int)hnd);
+		}
+    }
 	else if (hnd->pid == getpid()) // never unmap buffers that were not registered in this process
 	{
 		pthread_mutex_lock(&s_map_lock);
@@ -344,17 +429,10 @@ private_module_t::private_module_t()
 	base.perform = NULL;
 	INIT_ZERO(base.reserved_proc);
 
-	framebuffer = NULL;
-	flags = 0;
-	numBuffers = 0;
-	bufferMask = 0;
+	INIT_ZERO(fb_primary);
+	INIT_ZERO(fb_external);
+
 	pthread_mutex_init(&(lock), NULL);
-	currentBuffer = NULL;
-	INIT_ZERO(info);
-	INIT_ZERO(finfo);
-	xdpi = 0.0f;
-	ydpi = 0.0f;
-	fps = 0.0f;
 
 #undef INIT_ZERO
 };

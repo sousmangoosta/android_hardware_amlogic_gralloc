@@ -25,10 +25,15 @@
 #include <linux/fb.h>
 #include <sys/types.h>
 #include <unistd.h>
+#include <utils/Log.h>
+
+#include <linux/ion.h>
+#include <ion/ion.h>
 
 #include <hardware/gralloc.h>
 #include <cutils/native_handle.h>
 #include <alloc_device.h>
+#include "framebuffer.h"
 #include <utils/Log.h>
 
 #include <linux/ion.h>
@@ -73,16 +78,6 @@ struct fb_dmabuf_export
  * 8 is big enough for "gpu0" & "fb0" currently
  */
 #define MALI_GRALLOC_HARDWARE_MAX_STR_LEN 8
-#ifdef ENABLE_FB_TRIPLE_BUFFERS
-#define NUM_FB_BUFFERS 3
-#else
-#define NUM_FB_BUFFERS 2
-#endif
-unsigned int get_num_fb_buffers();
-
-#if GRALLOC_ARM_UMP_MODULE
-#include <ump/ump.h>
-#endif
 
 typedef enum
 {
@@ -95,23 +90,24 @@ typedef enum
 
 struct private_handle_t;
 
+//used by gralloc mode to only.
+struct framebuffer_mapper_t{
+    private_handle_t* framebuffer;
+    uint32_t numBuffers;
+    uint32_t bufferMask;
+    uint32_t bufferSize;
+};
+
+
 struct private_module_t
 {
 	gralloc_module_t base;
 
-	private_handle_t *framebuffer;
-	uint32_t flags;
-	uint32_t numBuffers;
-	uint32_t bufferMask;
-	pthread_mutex_t lock;
-	buffer_handle_t currentBuffer;
-	int ion_client;
+    framebuffer_mapper_t fb_primary;
+    framebuffer_mapper_t fb_external;
 
-	struct fb_var_screeninfo info;
-	struct fb_fix_screeninfo finfo;
-	float xdpi;
-	float ydpi;
-	float fps;
+	pthread_mutex_t lock;
+	int ion_client;
 
 	enum
 	{
@@ -123,6 +119,10 @@ struct private_module_t
 	private_module_t();
 };
 
+
+/*
+ATTENTATION: don't add member in this struct, it is used by other modules.
+*/
 #ifdef __cplusplus
 struct private_handle_t : public native_handle
 {
@@ -177,8 +177,9 @@ struct private_handle_t
 #define GRALLOC_ARM_UMP_NUM_INTS 0
 #endif
 
-	// Following members is for framebuffer only
-	int     fd;
+    // Following members is for framebuffer only
+    int     fd;//to mmap osd memory 
+    //current buffer offset from framebuffer base
 	int     offset;
 
 #if GRALLOC_ARM_DMA_BUF_MODULE
@@ -229,7 +230,7 @@ struct private_handle_t
 		offset(0)
 #if GRALLOC_ARM_DMA_BUF_MODULE
 		,
-		ion_hnd(NULL)
+		ion_hnd(0)
 #endif
 
 	{
@@ -261,7 +262,7 @@ struct private_handle_t
 #endif
 		fd(0),
 		offset(0),
-		ion_hnd(NULL)
+		ion_hnd(0)
 
 	{
 		version = sizeof(native_handle);
@@ -296,7 +297,7 @@ struct private_handle_t
 		offset(fb_offset)
 #if GRALLOC_ARM_DMA_BUF_MODULE
 		,
-		ion_hnd(NULL)
+		ion_hnd(0)
 #endif
 
 	{

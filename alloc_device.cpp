@@ -250,23 +250,40 @@ static int gralloc_alloc_buffer(alloc_device_t *dev, size_t size, int usage, buf
 
 static int gralloc_alloc_framebuffer_locked(alloc_device_t *dev, size_t size, int usage, buffer_handle_t *pHandle)
 {
-	private_module_t *m = reinterpret_cast<private_module_t *>(dev->common.module);
-
+	private_module_t* private_t = reinterpret_cast<private_module_t*>(dev->common.module);
+	framebuffer_mapper_t* m = NULL;
+#ifdef DEBUG_EXTERNAL_DISPLAY_ON_PANEL
+	ALOGD("always alloc from fb0");
+	m = &(private_t->fb_primary);
+#else
+	if( usage & GRALLOC_USAGE_EXTERNAL_DISP)
+	{
+		m = &(private_t->fb_external);
+	}
+	else
+	{
+		m = &(private_t->fb_primary);
+	}
+#endif
+	
 	// allocate the framebuffer
 	if (m->framebuffer == NULL)
 	{
+	#if 0//not a good idea to init here. remove it.
 		// initialize the framebuffer, the framebuffer is mapped once and forever.
 		int err = init_frame_buffer_locked(m);
-
-		if (err < 0)
+                if (err < 0)
 		{
 			return err;
 		}
+    #endif
+        AERR("Should register fb before alloc it. display %d ",usage & GRALLOC_USAGE_EXTERNAL_DISP);
+        return -1;
 	}
 
 	const uint32_t bufferMask = m->bufferMask;
 	const uint32_t numBuffers = m->numBuffers;
-	const size_t bufferSize = m->finfo.line_length * m->info.yres;
+	const size_t bufferSize = m->bufferSize;
 
 	if (numBuffers == 1)
 	{
@@ -274,7 +291,7 @@ static int gralloc_alloc_framebuffer_locked(alloc_device_t *dev, size_t size, in
 		// we return a regular buffer which will be memcpy'ed to the main
 		// screen when post is called.
 		int newUsage = (usage & ~GRALLOC_USAGE_HW_FB) | GRALLOC_USAGE_HW_2D;
-		AERR("fallback to single buffering. Virtual Y-res too small %d", m->info.yres);
+		AERR("fallback to single buffering. Virtual Y-res too small %d", numBuffers);
 		return gralloc_alloc_buffer(dev, bufferSize, newUsage, pHandle);
 	}
 
@@ -298,9 +315,12 @@ static int gralloc_alloc_framebuffer_locked(alloc_device_t *dev, size_t size, in
 		vaddr = (void *)((uintptr_t)vaddr + bufferSize);
 	}
 
+    ALOGD("allocate buffer %p , bufferSize %d",vaddr,bufferSize);
+
+
 	// The entire framebuffer memory is already mapped, now create a buffer object for parts of this memory
-	private_handle_t *hnd = new private_handle_t(private_handle_t::PRIV_FLAGS_FRAMEBUFFER, usage, size, vaddr,
-	        0, dup(m->framebuffer->fd), (uintptr_t)vaddr - (uintptr_t) m->framebuffer->base);
+	private_handle_t* hnd = new private_handle_t(private_handle_t::PRIV_FLAGS_FRAMEBUFFER, usage, size, vaddr,
+	                                             0, m->framebuffer->fd, (uintptr_t)vaddr - (uintptr_t)m->framebuffer->base);
 #if GRALLOC_ARM_UMP_MODULE
 	hnd->ump_id = m->framebuffer->ump_id;
 
@@ -445,7 +465,6 @@ static int alloc_device_alloc(alloc_device_t *dev, int w, int h, int format, int
 	}
 	else
 #endif
-
 	{
 		err = gralloc_alloc_buffer(dev, size, usage, pHandle);
 		if (err < 0)
@@ -532,11 +551,24 @@ static int alloc_device_free(alloc_device_t *dev, buffer_handle_t handle)
 	if (hnd->flags & private_handle_t::PRIV_FLAGS_FRAMEBUFFER)
 	{
 		// free this buffer
-		private_module_t *m = reinterpret_cast<private_module_t *>(dev->common.module);
-		const size_t bufferSize = m->finfo.line_length * m->info.yres;
-		int index = ((uintptr_t)hnd->base - (uintptr_t)m->framebuffer->base) / bufferSize;
-		m->bufferMask &= ~(1 << index);
-		close(hnd->fd);
+		private_module_t* priv_t = reinterpret_cast<private_module_t*>(dev->common.module);
+		framebuffer_mapper_t* m = NULL;
+#ifdef DEBUG_EXTERNAL_DISPLAY_ON_PANEL
+		ALOGD("always free from fb0");
+		m = &(priv_t->fb_primary);
+#else
+		if( hnd->usage & GRALLOC_USAGE_EXTERNAL_DISP)
+		{
+			m = &(priv_t->fb_external);
+		}
+		else
+		{
+			m = &(priv_t->fb_primary);
+		}
+#endif
+		int index = ((uintptr_t)hnd->base - (uintptr_t)m->framebuffer->base) / m->bufferSize;
+		m->bufferMask &= ~(1<<index); 
+        ALOGD("free frame buffer %d",index);
 
 #if GRALLOC_ARM_UMP_MODULE
 
