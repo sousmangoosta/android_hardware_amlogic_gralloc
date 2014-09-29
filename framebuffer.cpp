@@ -71,6 +71,213 @@ int bits_per_pixel()
 }
 
 
+int update_cursor_buffer_locked(struct framebuffer_info_t* cbinfo, int xres, int yres)
+{
+    char const * const device_template[] =
+    {
+    	"/dev/graphics/fb%u",
+    	"/dev/fb%u",
+    	NULL
+    };
+
+    int i = 0;
+    char name[64];
+
+    while ((cbinfo->fd == -1) && device_template[i])
+    {
+    	snprintf(name, 64, device_template[i], cbinfo->fbIdx);
+    	cbinfo->fd = open(name, O_RDWR, 0);
+    	i++;
+    }
+
+    ALOGE("update_cursor_buffer_locked of fb idx (%d)",cbinfo->fbIdx);
+
+    if (cbinfo->fd < 0)
+    {
+    	return -errno;
+    }
+
+    struct fb_fix_screeninfo finfo;
+    if (ioctl(cbinfo->fd, FBIOGET_FSCREENINFO, &finfo) == -1)
+    {
+    	return -errno;
+    }
+
+    struct fb_var_screeninfo info;
+    if (ioctl(cbinfo->fd, FBIOGET_VSCREENINFO, &info) == -1)
+    {
+    	return -errno;
+    }
+
+    ALOGE("vinfo. %d %d", info.xres, info.yres);
+
+    info.xoffset = info.yoffset = 0;
+    info.bits_per_pixel = 32;
+
+    info.xres_virtual = info.xres = xres;
+    info.yres_virtual = info.yres = yres;
+
+    if (ioctl(cbinfo->fd, FBIOPUT_VSCREENINFO, &info) == -1){
+        ALOGE("set vinfo fail\n");
+    }
+
+    if (ioctl(cbinfo->fd, FBIOGET_VSCREENINFO, &info) == -1){
+        ALOGE("get info fail\n");
+        return -errno;
+    }
+
+    if (int(info.width) <= 0 || int(info.height) <= 0)
+    {
+        // the driver doesn't return that information
+        // default to 160 dpi
+        info.width  = ((info.xres * 25.4f)/160.0f + 0.5f);
+        info.height = ((info.yres * 25.4f)/160.0f + 0.5f);
+    }
+
+    AINF("using (fd=%d)\n"
+         "id           = %s\n"
+         "xres         = %d px\n"
+         "yres         = %d px\n"
+         "xres_virtual = %d px\n"
+         "yres_virtual = %d px\n"
+         "bpp          = %d\n",
+         cbinfo->fd,
+         finfo.id,
+         info.xres,
+         info.yres,
+         info.xres_virtual,
+         info.yres_virtual,
+         info.bits_per_pixel);
+
+    AINF("width        = %d mm \n"
+         "height       = %d mm \n",
+         info.width,
+         info.height);
+
+    if (ioctl(cbinfo->fd, FBIOGET_FSCREENINFO, &finfo) == -1)
+    {
+    	return -errno;
+    }
+
+    if (finfo.smem_len <= 0)
+    {
+    	return -errno;
+    }
+
+    cbinfo->info = info;
+    cbinfo->finfo = finfo;
+    ALOGD("update_cursor_buffer_locked: finfo.line_length is 0x%x,info.yres_virtual is 0x%x", finfo.line_length, info.yres_virtual);
+    cbinfo->fbSize = round_up_to_page_size(finfo.line_length * info.yres_virtual);
+
+    return 0;
+}
+
+
+int init_cursor_buffer_locked(struct framebuffer_info_t* cbinfo)
+{
+    char const * const device_template[] =
+    {
+    	"/dev/graphics/fb%u",
+    	"/dev/fb%u",
+    	NULL
+    };
+
+    int fd = -1;
+    int i = 0;
+    char name[64];
+
+    while ((fd == -1) && device_template[i])
+    {
+    	snprintf(name, 64, device_template[i], cbinfo->fbIdx);
+    	fd = open(name, O_RDWR, 0);
+    	i++;
+    }
+
+    ALOGE("init_cursor_buffer_locked of dev:(%s),fb idx (%d)",name,cbinfo->fbIdx);
+
+    if (fd < 0)
+    {
+    	return -errno;
+    }
+
+    struct fb_fix_screeninfo finfo;
+    if (ioctl(fd, FBIOGET_FSCREENINFO, &finfo) == -1)
+    {
+    	return -errno;
+    }
+
+    struct fb_var_screeninfo info;
+    if (ioctl(fd, FBIOGET_VSCREENINFO, &info) == -1)
+    {
+    	return -errno;
+    }
+
+    ALOGE("vinfo. %d %d", info.xres, info.yres);
+
+    info.xoffset = info.yoffset = 0;
+    info.bits_per_pixel = 32;
+
+    if (ioctl(fd, FBIOPUT_VSCREENINFO, &info) == -1){
+        ALOGE("set vinfo fail\n");
+    }
+
+    if (ioctl(fd, FBIOGET_VSCREENINFO, &info) == -1){
+        ALOGE("get info fail\n");
+        return -errno;
+    }
+
+    if (int(info.width) <= 0 || int(info.height) <= 0)
+    {
+        // the driver doesn't return that information
+        // default to 160 dpi
+        info.width  = ((info.xres * 25.4f)/160.0f + 0.5f);
+        info.height = ((info.yres * 25.4f)/160.0f + 0.5f);
+    }
+
+    //float xdpi = (info.xres * 25.4f) / info.width;
+    //float ydpi = (info.yres * 25.4f) / info.height;
+
+    AINF("using (fd=%d)\n"
+         "id           = %s\n"
+         "xres         = %d px\n"
+         "yres         = %d px\n"
+         "xres_virtual = %d px\n"
+         "yres_virtual = %d px\n"
+         "bpp          = %d\n",
+         fd,
+         finfo.id,
+         info.xres,
+         info.yres,
+         info.xres_virtual,
+         info.yres_virtual,
+         info.bits_per_pixel);
+
+    AINF("width        = %d mm \n"
+         "height       = %d mm \n",
+         info.width,
+         info.height);
+
+    if (ioctl(fd, FBIOGET_FSCREENINFO, &finfo) == -1)
+    {
+    	return -errno;
+    }
+
+    if (finfo.smem_len <= 0)
+    {
+    	return -errno;
+    }
+
+    cbinfo->info = info;
+    cbinfo->finfo = finfo;
+    cbinfo->fd = fd;
+    ALOGE("init_cursor_buffer_locked: finfo.line_length is 0x%x,info.yres_virtual is 0x%x", finfo.line_length, info.yres_virtual);
+    cbinfo->fbSize = round_up_to_page_size(finfo.line_length * info.yres_virtual);
+
+    return 0;
+}
+
+
+
 int init_frame_buffer_locked(struct framebuffer_info_t* fbinfo)
 {
 	char const * const device_template[] =

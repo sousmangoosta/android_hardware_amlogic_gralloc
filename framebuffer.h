@@ -28,11 +28,13 @@ typedef struct framebuffer_info_t{
 
 
 // Initialize the framebuffer (must keep module lock before calling
-extern int init_frame_buffer_locked(struct framebuffer_info_t* info);
-extern int fb_post_locked(struct framebuffer_info_t* fbinfo,buffer_handle_t buffer);
-extern int fb_post_with_fence_locked(struct framebuffer_info_t* fbinfo,buffer_handle_t hnd,int in_fence);
-extern int getOsdIdx(int display_type);
-extern int bits_per_pixel();
+int init_frame_buffer_locked(struct framebuffer_info_t* info);
+int init_cursor_buffer_locked(struct framebuffer_info_t* info);
+int update_cursor_buffer_locked(struct framebuffer_info_t* cbinfo, int xres, int yres);
+int fb_post_locked(struct framebuffer_info_t* fbinfo,buffer_handle_t buffer);
+int fb_post_with_fence_locked(struct framebuffer_info_t* fbinfo,buffer_handle_t hnd,int in_fence);
+int getOsdIdx(int display_type);
+int bits_per_pixel();
 
 //for egl to get framebuffer count
 extern unsigned int get_num_fb_buffers();

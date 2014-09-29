@@ -103,8 +103,8 @@ struct private_module_t
 {
 	gralloc_module_t base;
 
-    framebuffer_mapper_t fb_primary;
-    framebuffer_mapper_t fb_external;
+	framebuffer_mapper_t fb_primary;
+	framebuffer_mapper_t fb_external;
 
 	pthread_mutex_t lock;
 	int ion_client;
@@ -139,6 +139,7 @@ struct private_handle_t
 		PRIV_FLAGS_USES_ION    = 0x00000004,
 		PRIV_FLAGS_VIDEO_OVERLAY = 0x00000010,
 		PRIV_FLAGS_VIDEO_OMX     = 0x00000020,
+		PRIV_FLAGS_CURSOR = 0x00000040,
 	};
 
 	enum

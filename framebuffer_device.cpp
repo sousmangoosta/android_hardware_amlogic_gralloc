@@ -73,7 +73,7 @@ static int init_frame_buffer(struct private_module_t* module,struct framebuffer_
         ALOGD("init already called before.");
         return 0;
     }
-	pthread_mutex_lock(&module->lock);
+    pthread_mutex_lock(&module->lock);
     framebuffer_info_t* fbinfo = &(fb->fb_info);
     fbinfo->displayType = HWC_DISPLAY_PRIMARY;
     fbinfo->fbIdx = getOsdIdx(fbinfo->displayType);

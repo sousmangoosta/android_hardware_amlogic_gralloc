@@ -142,8 +142,7 @@ static int gralloc_register_buffer(gralloc_module_t const *module, buffer_handle
             ALOGE("ERROR::register frambuffer again!!!");
         }
         
-    }
-	else if (hnd->flags & private_handle_t::PRIV_FLAGS_USES_UMP)
+    }else if (hnd->flags & private_handle_t::PRIV_FLAGS_USES_UMP)
 	{
 #if GRALLOC_ARM_UMP_MODULE
 		hnd->ump_mem_handle = (int)ump_handle_create_from_secure_id(hnd->ump_id);
