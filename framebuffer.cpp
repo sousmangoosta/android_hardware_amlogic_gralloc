@@ -70,7 +70,7 @@ int bits_per_pixel()
 	return 16;
 }
 
-
+#ifndef SINGLE_EXTERNAL_DISPLAY_USE_FB1
 int update_cursor_buffer_locked(struct framebuffer_info_t* cbinfo, int xres, int yres)
 {
     char const * const device_template[] =
@@ -275,7 +275,7 @@ int init_cursor_buffer_locked(struct framebuffer_info_t* cbinfo)
 
     return 0;
 }
-
+#endif
 
 
 int init_frame_buffer_locked(struct framebuffer_info_t* fbinfo)
