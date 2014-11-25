@@ -42,10 +42,8 @@
 #else
 
 // numbers of buffers for page flipping
-#ifdef ENABLE_FB_TRIPLE_BUFFERS
-#define NUM_BUFFERS 3
-#else
-#define NUM_BUFFERS 2
+#ifndef NUM_BUFFERS
+#define NUM_BUFFERS (2)
 #endif
 
 #endif
