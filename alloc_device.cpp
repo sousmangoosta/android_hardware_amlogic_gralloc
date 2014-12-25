@@ -463,14 +463,14 @@ static int alloc_device_alloc(alloc_device_t *dev, int w, int h, int format, int
 
     } else if (format == HAL_PIXEL_FORMAT_YCbCr_420_888) {
         // Flexible framework-accessible YUV format; map to NV21 for now
-        if (usage & GRALLOC_USAGE_HW_CAMERA_WRITE) {
-            format = HAL_PIXEL_FORMAT_YCrCb_420_SP;
-        }
-        if (format == HAL_PIXEL_FORMAT_YCbCr_420_888) {
-            ALOGE("gralloc_alloc: Requested YCbCr_420_888, but no known "
-                    "specific format for this usage: %d x %d, usage %x",
-                    w, h, usage);
-        }
+        //if (usage & GRALLOC_USAGE_HW_CAMERA_WRITE) {
+        //    format = HAL_PIXEL_FORMAT_YCrCb_420_SP;
+        //}
+        //if (format == HAL_PIXEL_FORMAT_YCbCr_420_888) {
+        //    ALOGE("gralloc_alloc: Requested YCbCr_420_888, but no known "
+        //            "specific format for this usage: %d x %d, usage %x",
+        //            w, h, usage);
+        //}
 
         size = w*h*3/2;
 
