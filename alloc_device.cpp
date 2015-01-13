@@ -564,24 +564,7 @@ static int alloc_device_alloc(alloc_device_t *dev, int w, int h, int format, int
         hnd->flags |= private_handle_t::PRIV_FLAGS_VIDEO_OVERLAY;
     }
 
-    switch (private_usage)
-    {
-        case 0:
-            hnd->yuv_info = MALI_YUV_BT601_NARROW;
-            break;
-
-        case GRALLOC_USAGE_PRIVATE_1:
-            hnd->yuv_info = MALI_YUV_BT601_WIDE;
-            break;
-
-        case GRALLOC_USAGE_PRIVATE_0:
-            hnd->yuv_info = MALI_YUV_BT709_NARROW;
-            break;
-
-        case (GRALLOC_USAGE_PRIVATE_0 | GRALLOC_USAGE_PRIVATE_1):
-            hnd->yuv_info = MALI_YUV_BT709_WIDE;
-            break;
-    }
+    hnd->yuv_info = MALI_YUV_BT601_NARROW;
 
     hnd->width = w;
     hnd->height = h;
