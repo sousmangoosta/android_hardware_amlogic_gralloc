@@ -463,7 +463,7 @@ static int gralloc_unlock(gralloc_module_t const *module, buffer_handle_t handle
         if (hw_get_module(GRALLOC_HARDWARE_MODULE_ID, (const hw_module_t **)&pmodule) == 0)
         {
             m = reinterpret_cast<private_module_t *>(pmodule);
-            //ion_sync_fd(m->ion_client, hnd->share_fd);
+            ion_sync_fd(m->ion_client, hnd->share_fd);
         }
         else
         {
