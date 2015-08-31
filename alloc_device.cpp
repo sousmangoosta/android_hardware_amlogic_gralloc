@@ -450,6 +450,17 @@ static int alloc_device_alloc(alloc_device_t *dev, int w, int h, int format, int
             }
 
         }
+        if (usage & GRALLOC_USAGE_HW_COMPOSER) {
+	    if (usage & GRALLOC_USAGE_HW_TEXTURE) {
+                // VirtualDisplaySurface-to-encoder is NV21
+                format = HAL_PIXEL_FORMAT_YCrCb_420_SP;
+                size = w*h*3/2;
+            } else if (usage & GRALLOC_USAGE_HW_VIDEO_ENCODER) {
+                // VirtualDisplaySurface-to-encoder is NV21
+                format = HAL_PIXEL_FORMAT_YCrCb_420_SP;
+                size = w*h*3/2;
+            }
+        }
 
         if (format == HAL_PIXEL_FORMAT_IMPLEMENTATION_DEFINED) {
             ALOGE("gralloc_alloc: Requested auto format selection, "
