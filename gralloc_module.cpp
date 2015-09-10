@@ -425,10 +425,12 @@ static int gralloc_lock_ycbcr(gralloc_module_t const* module,
     // Zero out reserved fields
     memset(ycbcr->reserved, 0, sizeof(ycbcr->reserved));
 
+#if 0
     ALOGV("gralloc_lock_ycbcr success. usage: %x, ycbcr.y: %p, .cb: %p, .cr: %p, "
             ".ystride: %d , .cstride: %d, .chroma_step: %d", usage,
             ycbcr->y, ycbcr->cb, ycbcr->cr, ycbcr->ystride, ycbcr->cstride,
             ycbcr->chroma_step);
+#endif
 
     return 0;
 }
