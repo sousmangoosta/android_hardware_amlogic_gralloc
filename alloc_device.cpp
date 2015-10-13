@@ -547,6 +547,10 @@ static int alloc_device_alloc(alloc_device_t *dev, int w, int h, int format, int
             hnd->flags |= private_handle_t::PRIV_FLAGS_VIDEO_OVERLAY;
 
         }
+        if (usage & GRALLOC_USAGE_PRIVATE_1)
+        {
+            hnd->flags |= private_handle_t::PRIV_FLAGS_OSD_VIDEO_OMX;
+        }
         if (usage & GRALLOC_USAGE_PRIVATE_2)
         {
             private_handle_t* hnd = (private_handle_t*)(*pHandle);
