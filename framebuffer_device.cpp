@@ -16,6 +16,8 @@
  * limitations under the License.
  */
 
+#include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 #include <errno.h>
 #include <fcntl.h>
@@ -214,7 +216,7 @@ int framebuffer_device_open(hw_module_t const *module, const char *name, hw_devi
 #endif
 
     /*Init the framebuffer data*/
-    framebuffer_t *fb = new framebuffer_t();
+    framebuffer_t *fb = (framebuffer_t *)malloc(sizeof(framebuffer_t));//new framebuffer_t();
 	memset(fb, 0, sizeof(*fb));
 
     framebuffer_device_t *dev = &(fb->base);
