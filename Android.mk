@@ -18,7 +18,7 @@
 
 LOCAL_PATH := $(call my-dir)
 
-MESON_GRALLOC_DIR?=$(LOCAL_PATH)
+MESON_GRALLOC_DIR ?= hardware/amlogic/gralloc
 ifeq ($(MESON_GRALLOC_DIR),$(LOCAL_PATH))
 
 #framebuffer apis
