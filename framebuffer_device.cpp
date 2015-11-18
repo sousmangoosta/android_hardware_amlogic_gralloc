@@ -216,7 +216,14 @@ int framebuffer_device_open(hw_module_t const *module, const char *name, hw_devi
 #endif
 
     /*Init the framebuffer data*/
+#if MESON_SDK_VERSION > 22
+    /*
+     * later than lollipop
+     * */
     framebuffer_t *fb = (framebuffer_t *)malloc(sizeof(framebuffer_t));//new framebuffer_t();
+#else
+    framebuffer_t *fb = new framebuffer_t();
+#endif
 	memset(fb, 0, sizeof(*fb));
 
     framebuffer_device_t *dev = &(fb->base);
