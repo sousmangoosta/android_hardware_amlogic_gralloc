@@ -17,12 +17,12 @@ typedef struct framebuffer_info_t{
 
     int   fd;//for fbpost use
     int   fbSize;
-    
+
     float xdpi;
     float ydpi;
     float fps;
     int   flipFlags;
-    
+
     buffer_handle_t currentBuffer;
 }framebuffer_info_t;
 
@@ -42,6 +42,6 @@ int bits_per_pixel();
 
 //for egl to get framebuffer count
 extern unsigned int get_num_fb_buffers();
-
+extern bool osd_afbcd_enable();
 
 #endif

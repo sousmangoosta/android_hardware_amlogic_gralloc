@@ -17,7 +17,6 @@
 #include <cutils/properties.h>
 #include <hardware/hardware.h>
 #include <hardware/gralloc.h>
-#include "gralloc_priv.h"
 #include "framebuffer.h"
 
 #include <hardware/hwcomposer_defs.h>
@@ -68,210 +67,224 @@ int bits_per_pixel()
 	return 16;
 }
 
+bool osd_afbcd_enable()
+{
+	char osd_afbcd[PROPERTY_VALUE_MAX];
+	if (property_get("osd.afbcd.enable", osd_afbcd, NULL ) > 0 && atoi(osd_afbcd) == 0)
+	{
+		return false;
+	}
+	return true;
+}
+
 #ifndef SINGLE_EXTERNAL_DISPLAY_USE_FB1
 int update_cursor_buffer_locked(struct framebuffer_info_t* cbinfo, int xres, int yres)
 {
-    char const * const device_template[] =
-    {
-    	"/dev/graphics/fb%u",
-    	"/dev/fb%u",
-    	NULL
-    };
+	char const * const device_template[] =
+	{
+		"/dev/graphics/fb%u",
+		"/dev/fb%u",
+		NULL
+	};
 
-    int i = 0;
-    char name[64];
+	int i = 0;
+	char name[64];
 
-    while ((cbinfo->fd == -1) && device_template[i])
-    {
-    	snprintf(name, 64, device_template[i], cbinfo->fbIdx);
-    	cbinfo->fd = open(name, O_RDWR, 0);
-    	i++;
-    }
+	while ((cbinfo->fd == -1) && device_template[i])
+	{
+		snprintf(name, 64, device_template[i], cbinfo->fbIdx);
+		cbinfo->fd = open(name, O_RDWR, 0);
+		i++;
+	}
 
-    ALOGE("update_cursor_buffer_locked of fb idx (%d)",cbinfo->fbIdx);
+	ALOGE("update_cursor_buffer_locked of fb idx (%d)",cbinfo->fbIdx);
 
-    if (cbinfo->fd < 0)
-    {
-    	return -errno;
-    }
+	if (cbinfo->fd < 0)
+	{
+		return -errno;
+	}
 
-    struct fb_fix_screeninfo finfo;
-    if (ioctl(cbinfo->fd, FBIOGET_FSCREENINFO, &finfo) == -1)
-    {
-    	return -errno;
-    }
+	struct fb_fix_screeninfo finfo;
+	if (ioctl(cbinfo->fd, FBIOGET_FSCREENINFO, &finfo) == -1)
+	{
+		return -errno;
+	}
 
-    struct fb_var_screeninfo info;
-    if (ioctl(cbinfo->fd, FBIOGET_VSCREENINFO, &info) == -1)
-    {
-    	return -errno;
-    }
+	struct fb_var_screeninfo info;
+	if (ioctl(cbinfo->fd, FBIOGET_VSCREENINFO, &info) == -1)
+	{
+		return -errno;
+	}
 
-    ALOGE("vinfo. %d %d", info.xres, info.yres);
+	ALOGE("vinfo. %d %d", info.xres, info.yres);
 
-    info.xoffset = info.yoffset = 0;
-    info.bits_per_pixel = 32;
+	info.xoffset = info.yoffset = 0;
+	info.bits_per_pixel = 32;
 
-    info.xres_virtual = info.xres = xres;
-    info.yres_virtual = info.yres = yres;
+	info.xres_virtual = info.xres = xres;
+	info.yres_virtual = info.yres = yres;
 
-    if (ioctl(cbinfo->fd, FBIOPUT_VSCREENINFO, &info) == -1){
-        ALOGE("set vinfo fail\n");
-    }
+	if (ioctl(cbinfo->fd, FBIOPUT_VSCREENINFO, &info) == -1)
+	{
+		ALOGE("set vinfo fail\n");
+	}
 
-    if (ioctl(cbinfo->fd, FBIOGET_VSCREENINFO, &info) == -1){
-        ALOGE("get info fail\n");
-        return -errno;
-    }
+	if (ioctl(cbinfo->fd, FBIOGET_VSCREENINFO, &info) == -1)
+	{
+		ALOGE("get info fail\n");
+		return -errno;
+	}
 
-    if (int(info.width) <= 0 || int(info.height) <= 0)
-    {
-        // the driver doesn't return that information
-        // default to 160 dpi
-        info.width  = ((info.xres * 25.4f)/160.0f + 0.5f);
-        info.height = ((info.yres * 25.4f)/160.0f + 0.5f);
-    }
+	if (int(info.width) <= 0 || int(info.height) <= 0)
+	{
+		// the driver doesn't return that information
+		// default to 160 dpi
+		info.width  = ((info.xres * 25.4f)/160.0f + 0.5f);
+		info.height = ((info.yres * 25.4f)/160.0f + 0.5f);
+	}
 
-    AINF("using (fd=%d)\n"
-         "id           = %s\n"
-         "xres         = %d px\n"
-         "yres         = %d px\n"
-         "xres_virtual = %d px\n"
-         "yres_virtual = %d px\n"
-         "bpp          = %d\n",
-         cbinfo->fd,
-         finfo.id,
-         info.xres,
-         info.yres,
-         info.xres_virtual,
-         info.yres_virtual,
-         info.bits_per_pixel);
+	AINF("using (fd=%d)\n"
+		"id           = %s\n"
+		"xres         = %d px\n"
+		"yres         = %d px\n"
+		"xres_virtual = %d px\n"
+		"yres_virtual = %d px\n"
+		"bpp          = %d\n",
+		cbinfo->fd,
+		finfo.id,
+		info.xres,
+		info.yres,
+		info.xres_virtual,
+		info.yres_virtual,
+		info.bits_per_pixel);
 
-    AINF("width        = %d mm \n"
-         "height       = %d mm \n",
-         info.width,
-         info.height);
+	AINF("width        = %d mm \n"
+			"height       = %d mm \n",
+			info.width,
+			info.height);
 
-    if (ioctl(cbinfo->fd, FBIOGET_FSCREENINFO, &finfo) == -1)
-    {
-    	return -errno;
-    }
+	if (ioctl(cbinfo->fd, FBIOGET_FSCREENINFO, &finfo) == -1)
+	{
+		return -errno;
+	}
 
-    if (finfo.smem_len <= 0)
-    {
-    	return -errno;
-    }
+	if (finfo.smem_len <= 0)
+	{
+		return -errno;
+	}
 
-    cbinfo->info = info;
-    cbinfo->finfo = finfo;
-    ALOGD("update_cursor_buffer_locked: finfo.line_length is 0x%x,info.yres_virtual is 0x%x", finfo.line_length, info.yres_virtual);
-    cbinfo->fbSize = round_up_to_page_size(finfo.line_length * info.yres_virtual);
+	cbinfo->info = info;
+	cbinfo->finfo = finfo;
+	ALOGD("update_cursor_buffer_locked: finfo.line_length is 0x%x,info.yres_virtual is 0x%x", finfo.line_length, info.yres_virtual);
+	cbinfo->fbSize = round_up_to_page_size(finfo.line_length * info.yres_virtual);
 
-    return 0;
+	return 0;
 }
 
 
 int init_cursor_buffer_locked(struct framebuffer_info_t* cbinfo)
 {
-    char const * const device_template[] =
-    {
-    	"/dev/graphics/fb%u",
-    	"/dev/fb%u",
-    	NULL
-    };
+	char const * const device_template[] =
+	{
+		"/dev/graphics/fb%u",
+		"/dev/fb%u",
+		NULL
+	};
 
-    int fd = -1;
-    int i = 0;
-    char name[64];
+	int fd = -1;
+	int i = 0;
+	char name[64];
 
-    while ((fd == -1) && device_template[i])
-    {
-    	snprintf(name, 64, device_template[i], cbinfo->fbIdx);
-    	fd = open(name, O_RDWR, 0);
-    	i++;
-    }
+	while ((fd == -1) && device_template[i])
+	{
+		snprintf(name, 64, device_template[i], cbinfo->fbIdx);
+		fd = open(name, O_RDWR, 0);
+		i++;
+	}
 
-    ALOGE("init_cursor_buffer_locked of dev:(%s),fb idx (%d)",name,cbinfo->fbIdx);
+	ALOGE("init_cursor_buffer_locked of dev:(%s),fb idx (%d)",name,cbinfo->fbIdx);
 
-    if (fd < 0)
-    {
-    	return -errno;
-    }
+	if (fd < 0)
+	{
+		return -errno;
+	}
 
-    struct fb_fix_screeninfo finfo;
-    if (ioctl(fd, FBIOGET_FSCREENINFO, &finfo) == -1)
-    {
-    	return -errno;
-    }
+	struct fb_fix_screeninfo finfo;
+	if (ioctl(fd, FBIOGET_FSCREENINFO, &finfo) == -1)
+	{
+		return -errno;
+	}
 
-    struct fb_var_screeninfo info;
-    if (ioctl(fd, FBIOGET_VSCREENINFO, &info) == -1)
-    {
-    	return -errno;
-    }
+	struct fb_var_screeninfo info;
+	if (ioctl(fd, FBIOGET_VSCREENINFO, &info) == -1)
+	{
+		return -errno;
+	}
 
-    ALOGE("vinfo. %d %d", info.xres, info.yres);
+	ALOGE("vinfo. %d %d", info.xres, info.yres);
 
-    info.xoffset = info.yoffset = 0;
-    info.bits_per_pixel = 32;
+	info.xoffset = info.yoffset = 0;
+	info.bits_per_pixel = 32;
 
-    if (ioctl(fd, FBIOPUT_VSCREENINFO, &info) == -1){
-        ALOGE("set vinfo fail\n");
-    }
+	if (ioctl(fd, FBIOPUT_VSCREENINFO, &info) == -1)
+	{
+		ALOGE("set vinfo fail\n");
+	}
 
-    if (ioctl(fd, FBIOGET_VSCREENINFO, &info) == -1){
-        ALOGE("get info fail\n");
-        return -errno;
-    }
+	if (ioctl(fd, FBIOGET_VSCREENINFO, &info) == -1)
+	{
+		ALOGE("get info fail\n");
+		return -errno;
+	}
 
-    if (int(info.width) <= 0 || int(info.height) <= 0)
-    {
-        // the driver doesn't return that information
-        // default to 160 dpi
-        info.width  = ((info.xres * 25.4f)/160.0f + 0.5f);
-        info.height = ((info.yres * 25.4f)/160.0f + 0.5f);
-    }
+	if (int(info.width) <= 0 || int(info.height) <= 0)
+	{
+		// the driver doesn't return that information
+		// default to 160 dpi
+		info.width  = ((info.xres * 25.4f)/160.0f + 0.5f);
+		info.height = ((info.yres * 25.4f)/160.0f + 0.5f);
+	}
 
-    //float xdpi = (info.xres * 25.4f) / info.width;
-    //float ydpi = (info.yres * 25.4f) / info.height;
+	//float xdpi = (info.xres * 25.4f) / info.width;
+	//float ydpi = (info.yres * 25.4f) / info.height;
 
-    AINF("using (fd=%d)\n"
-         "id           = %s\n"
-         "xres         = %d px\n"
-         "yres         = %d px\n"
-         "xres_virtual = %d px\n"
-         "yres_virtual = %d px\n"
-         "bpp          = %d\n",
-         fd,
-         finfo.id,
-         info.xres,
-         info.yres,
-         info.xres_virtual,
-         info.yres_virtual,
-         info.bits_per_pixel);
+	AINF("using (fd=%d)\n"
+		"id           = %s\n"
+		"xres         = %d px\n"
+		"yres         = %d px\n"
+		"xres_virtual = %d px\n"
+		"yres_virtual = %d px\n"
+		"bpp          = %d\n",
+		fd,
+		finfo.id,
+		info.xres,
+		info.yres,
+		info.xres_virtual,
+		info.yres_virtual,
+		info.bits_per_pixel);
 
-    AINF("width        = %d mm \n"
-         "height       = %d mm \n",
-         info.width,
-         info.height);
+	AINF("width        = %d mm \n"
+		"height       = %d mm \n",
+		info.width,
+		info.height);
 
-    if (ioctl(fd, FBIOGET_FSCREENINFO, &finfo) == -1)
-    {
-    	return -errno;
-    }
+	if (ioctl(fd, FBIOGET_FSCREENINFO, &finfo) == -1)
+	{
+		return -errno;
+	}
 
-    if (finfo.smem_len <= 0)
-    {
-    	return -errno;
-    }
+	if (finfo.smem_len <= 0)
+	{
+		return -errno;
+	}
 
-    cbinfo->info = info;
-    cbinfo->finfo = finfo;
-    cbinfo->fd = fd;
-    ALOGE("init_cursor_buffer_locked: finfo.line_length is 0x%x,info.yres_virtual is 0x%x", finfo.line_length, info.yres_virtual);
-    cbinfo->fbSize = round_up_to_page_size(finfo.line_length * info.yres_virtual);
+	cbinfo->info = info;
+	cbinfo->finfo = finfo;
+	cbinfo->fd = fd;
+	ALOGE("init_cursor_buffer_locked: finfo.line_length is 0x%x,info.yres_virtual is 0x%x", finfo.line_length, info.yres_virtual);
+	cbinfo->fbSize = round_up_to_page_size(finfo.line_length * info.yres_virtual);
 
-    return 0;
+	return 0;
 }
 #endif
 
@@ -297,7 +310,7 @@ int init_frame_buffer_locked(struct framebuffer_info_t* fbinfo)
 	}
 
 	ALOGE("init_frame_buffer_locked of dev:(%s),fb idx (%d)",name,fbinfo->fbIdx);
-    
+
 	if (fd < 0)
 	{
 		return -errno;
@@ -340,8 +353,8 @@ int init_frame_buffer_locked(struct framebuffer_info_t* fbinfo)
 	else
 	{
 		/*
-	 	 * Explicitly request 8/8/8/8
-	 	 */
+		* Explicitly request 8/8/8/8
+		*/
 		info.bits_per_pixel = 32;
 		info.red.offset     = 0;
 		info.red.length     = 8;
@@ -472,24 +485,23 @@ int fb_post_with_fence_locked(struct framebuffer_info_t* fbinfo,buffer_handle_t 
     }fb_sync_request_t;
     private_handle_t const* buffer = reinterpret_cast<private_handle_t const*>(hnd);
 
-    
     //wait fence sync
     //sync_wait(in_fence, 3000);
     //close(in_fence);
     //in_fence = -1;
     //set sync request
-   
+
     fb_sync_request_t sync_req;
-    memset(&sync_req,0,sizeof(fb_sync_request_t)); 
+    memset(&sync_req,0,sizeof(fb_sync_request_t));
     sync_req.xoffset=fbinfo->info.xoffset;
     sync_req.yoffset= buffer->offset / fbinfo->finfo.line_length;
     sync_req.in_fen_fd=in_fence;
-    //ALOGD( "req offset:%d\n",sync_req.yoffset); 
+    //ALOGD( "req offset:%d\n",sync_req.yoffset);
     ioctl(fbinfo->fd, FBIOPUT_OSD_SYNC_ADD, &sync_req);
      //ALOGD( "post offset:%d\n",buffer->offset/fbinfo->finfo.line_length);
     //TODO:: need update with kernel change.
     //fb_post_locked(fbinfo,hnd);
-    
+
     int out_fence = sync_req.out_fen_fd;
     /*nsecs_t origin=systemTime(CLOCK_MONOTONIC);
     ALOGD( "--sync wait: %d,begin:%lld\n",out_fence,origin);
@@ -497,7 +509,7 @@ int fb_post_with_fence_locked(struct framebuffer_info_t* fbinfo,buffer_handle_t 
     close(out_fence);
     nsecs_t diff=systemTime(CLOCK_MONOTONIC)-origin;
     ALOGD( "++sync wait: %d,wait_delay:%lld\n",out_fence,diff);*/
-    
+
     return out_fence;
 }
 
@@ -513,7 +525,7 @@ int fb_post_locked(struct framebuffer_info_t* fbinfo, buffer_handle_t hnd)
 	int interrupt;
 #define FBIO_WAITFORVSYNC       _IOW('F', 0x20, __u32)
 #define S3CFB_SET_VSYNC_INT	_IOW('F', 206, unsigned int)
-	if (ioctl(fbinfo->fd, FBIOPAN_DISPLAY, &fbinfo->info) == -1) 
+	if (ioctl(fbinfo->fd, FBIOPAN_DISPLAY, &fbinfo->info) == -1)
 	{
 		AERR( "FBIOPAN_DISPLAY failed for fd: %d", fbinfo->fd );
 		return 0;
@@ -526,7 +538,7 @@ int fb_post_locked(struct framebuffer_info_t* fbinfo, buffer_handle_t hnd)
 	{
 		// enable VSYNC
 		interrupt = 1;
-		if(ioctl(fbinfo->fd, S3CFB_SET_VSYNC_INT, &interrupt) < 0) 
+		if (ioctl(fbinfo->fd, S3CFB_SET_VSYNC_INT, &interrupt) < 0)
 		{
 			AERR( "S3CFB_SET_VSYNC_INT enable failed for fd: %d", fbinfo->fd );
 			return 0;
@@ -536,7 +548,7 @@ int fb_post_locked(struct framebuffer_info_t* fbinfo, buffer_handle_t hnd)
 		gralloc_mali_vsync_report(MALI_VSYNC_EVENT_BEGIN_WAIT);
 #endif
 		int crtc = 0;
-		if(ioctl(fbinfo->fd, FBIO_WAITFORVSYNC, &crtc) < 0)
+		if (ioctl(fbinfo->fd, FBIO_WAITFORVSYNC, &crtc) < 0)
 		{
 			AERR( "FBIO_WAITFORVSYNC failed for fd: %d", fbinfo->fd );
 #ifdef MALI_VSYNC_EVENT_REPORT_ENABLE
@@ -549,20 +561,20 @@ int fb_post_locked(struct framebuffer_info_t* fbinfo, buffer_handle_t hnd)
 #endif
 		// disable VSYNC
 		interrupt = 0;
-		if(ioctl(fbinfo->fd, S3CFB_SET_VSYNC_INT, &interrupt) < 0) 
+		if (ioctl(fbinfo->fd, S3CFB_SET_VSYNC_INT, &interrupt) < 0)
 		{
 			AERR( "S3CFB_SET_VSYNC_INT disable failed for fd: %d", fbinfo->fd );
 			return 0;
 		}
 	}
-#else 
+#else
 	/*Standard Android way*/
 #ifdef MALI_VSYNC_EVENT_REPORT_ENABLE
 	gralloc_mali_vsync_report(MALI_VSYNC_EVENT_BEGIN_WAIT);
 #endif
 	ALOGD("current yoffset %d\n",fbinfo->info.yoffset);
-	//if (ioctl(fbinfo->fd, FBIOPUT_VSCREENINFO, &fbinfo->info) == -1) 
-	if (ioctl(fbinfo->fd, FBIOPAN_DISPLAY, &fbinfo->info) == -1) 
+	//if (ioctl(fbinfo->fd, FBIOPUT_VSCREENINFO, &fbinfo->info) == -1)
+	if (ioctl(fbinfo->fd, FBIOPAN_DISPLAY, &fbinfo->info) == -1)
 	{
 		AERR( "FBIOPUT_VSCREENINFO failed for fd: %d", fbinfo->fd );
 #ifdef MALI_VSYNC_EVENT_REPORT_ENABLE
@@ -585,15 +597,16 @@ int getOsdIdx(int display_type)
 #ifdef DEBUG_EXTERNAL_DISPLAY_ON_PANEL
 	return 0;
 #else
-	if(display_type == HWC_DISPLAY_PRIMARY)
+	if (display_type == HWC_DISPLAY_PRIMARY)
 		return 0;
-	if(display_type == HWC_DISPLAY_EXTERNAL){
+	if (display_type == HWC_DISPLAY_EXTERNAL)
+	{
 #ifndef SINGLE_EXTERNAL_DISPLAY_USE_FB1
-            return 2;
+		return 2;
 #else
-            return 1;
+		return 1;
 #endif
-    }
+	}
 #endif
 	return -1;
 }

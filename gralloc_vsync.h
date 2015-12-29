@@ -1,10 +1,10 @@
 /*
- * Copyright (C) 2010 ARM Limited. All rights reserved.
+ * Copyright (C) 2014 ARM Limited. All rights reserved.
  *
  * Copyright (C) 2008 The Android Open Source Project
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
+ * You may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
  *      http://www.apache.org/licenses/LICENSE-2.0
@@ -16,14 +16,16 @@
  * limitations under the License.
  */
 
-#ifndef GRALLOC_HELPER_H_
-#define GRALLOC_HELPER_H_
+#ifndef _GRALLOC_VSYNC_H_
+#define _GRALLOC_VSYNC_H_
 
-#include <sys/mman.h>
+struct framebuffer_device_t;
 
-inline size_t round_up_to_page_size(size_t x)
-{
-    return (x + (PAGE_SIZE-1)) & ~(PAGE_SIZE-1);
-}
+/* Enables vsync interrupt. */
+int gralloc_vsync_enable(struct framebuffer_device_t* dev);
+/* Disables vsync interrupt. */
+int gralloc_vsync_disable(struct framebuffer_device_t* dev);
+/* Waits for the vsync interrupt. */
+int gralloc_wait_for_vsync(struct framebuffer_device_t* dev);
 
-#endif /* GRALLOC_HELPER_H_ */
+#endif /* _GRALLOC_VSYNC_H_ */

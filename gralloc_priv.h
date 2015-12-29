@@ -25,10 +25,9 @@
 #include <linux/fb.h>
 #include <sys/types.h>
 #include <unistd.h>
-#include <utils/Log.h>
+#include <sys/mman.h>
 
-#include <linux/ion.h>
-#include <ion/ion.h>
+#include <utils/Log.h>
 
 #include <hardware/gralloc.h>
 #include <cutils/native_handle.h>
@@ -36,13 +35,23 @@
 #include "framebuffer.h"
 #include <utils/Log.h>
 
-#include <linux/ion.h>
-#include <ion/ion.h>
+#include "format_chooser.h"
 
-#ifdef MALI_600
+//#define MALI_ION  1
+
 #define GRALLOC_ARM_UMP_MODULE 0
 #define GRALLOC_ARM_DMA_BUF_MODULE 1
+#if MALI_AFBC_GRALLOC
+#define MALI_AFBC_GRALLOC 1
+#endif
+#if !defined(GRALLOC_OLD_ION_API)
+/* new libion */
+typedef int ion_user_handle_t;
+#define ION_INVALID_HANDLE 0
 #else
+typedef struct ion_handle *ion_user_handle_t;
+#define ION_INVALID_HANDLE NULL
+#endif /* GRALLOC_OLD_ION_API */
 
 /* NOTE:
  * If your framebuffer device driver is integrated with UMP, you will have to
@@ -50,10 +59,9 @@
  * device.
  * Expected return value is a UMP secure id backing your framebuffer device memory.
  */
-
-/*#define IOCTL_GET_FB_UMP_SECURE_ID    _IOR('F', 311, unsigned int)*/
-#define GRALLOC_ARM_UMP_MODULE 0
-#define GRALLOC_ARM_DMA_BUF_MODULE 1
+#if GRALLOC_ARM_UMP_MODULE
+#define IOCTL_GET_FB_UMP_SECURE_ID	_IOWR('m', 0xF8, __u32)
+#endif
 
 /* NOTE:
  * If your framebuffer device driver is integrated with dma_buf, you will have to
@@ -65,13 +73,11 @@
 #if GRALLOC_ARM_DMA_BUF_MODULE
 struct fb_dmabuf_export
 {
+	__u32 buffer_idx;
 	__u32 fd;
 	__u32 flags;
 };
-/*#define FBIOGET_DMABUF    _IOR('F', 0x21, struct fb_dmabuf_export)*/
-#endif /* GRALLOC_ARM_DMA_BUF_MODULE */
-
-
+#define FBIOGET_DMABUF	_IOR('F', 0x21, struct fb_dmabuf_export)
 #endif
 
 /* the max string size of GRALLOC_HARDWARE_GPU0 & GRALLOC_HARDWARE_FB0
@@ -79,25 +85,57 @@ struct fb_dmabuf_export
  */
 #define MALI_GRALLOC_HARDWARE_MAX_STR_LEN 8
 
+/* Define number of shared file descriptors */
+#if MALI_AFBC_GRALLOC == 1 && GRALLOC_ARM_DMA_BUF_MODULE
+#define GRALLOC_ARM_NUM_FDS 2
+#elif MALI_AFBC_GRALLOC == 1 || GRALLOC_ARM_DMA_BUF_MODULE
+#define GRALLOC_ARM_NUM_FDS 1
+#else
+#define GRALLOC_ARM_NUM_FDS 0
+#endif
+
+
+#define NUM_INTS_IN_PRIVATE_HANDLE ((sizeof(struct private_handle_t) - sizeof(native_handle)) / sizeof(int) - sNumFds)
+
+
+
+#if GRALLOC_ARM_UMP_MODULE
+#include <ump/ump.h>
+#endif
+
 typedef enum
 {
 	MALI_YUV_NO_INFO,
 	MALI_YUV_BT601_NARROW,
 	MALI_YUV_BT601_WIDE,
 	MALI_YUV_BT709_NARROW,
-	MALI_YUV_BT709_WIDE,
+	MALI_YUV_BT709_WIDE
 } mali_gralloc_yuv_info;
+
+typedef enum
+{
+	MALI_DPY_TYPE_UNKNOWN = 0,
+	MALI_DPY_TYPE_CLCD,
+	MALI_DPY_TYPE_HDLCD
+} mali_dpy_type;
 
 struct private_handle_t;
 
 //used by gralloc mode to only.
 struct framebuffer_mapper_t{
     private_handle_t* framebuffer;
+    framebuffer_info_t fb_info;
     uint32_t numBuffers;
     uint32_t bufferMask;
     uint32_t bufferSize;
 };
 
+//TODO: NEED CHANGE NAME TO BE MORE READABLE!!
+struct framebuffer_t{
+    struct framebuffer_device_t base;
+    struct framebuffer_info_t fb_info;
+    struct private_handle_t*  fb_hnd;
+};
 
 struct private_module_t
 {
@@ -105,9 +143,11 @@ struct private_module_t
 
 	framebuffer_mapper_t fb_primary;
 	framebuffer_mapper_t fb_external;
-
 	pthread_mutex_t lock;
 	int ion_client;
+	mali_dpy_type dpy_type;
+
+	int swapInterval;
 
 	enum
 	{
@@ -115,8 +155,10 @@ struct private_module_t
 		PRIV_USAGE_LOCKED_FOR_POST = 0x80000000
 	};
 
+#ifdef __cplusplus
 	/* default constructor */
 	private_module_t();
+#endif
 };
 
 
@@ -145,74 +187,93 @@ struct private_handle_t
 
 	enum
 	{
-		LOCK_STATE_WRITE     =   1 << 31,
-		LOCK_STATE_MAPPED    =   1 << 30,
+		LOCK_STATE_WRITE     =   1<<31,
+		LOCK_STATE_MAPPED    =   1<<30,
 		LOCK_STATE_READ_MASK =   0x3FFFFFFF
 	};
 
-	// ints
 #if GRALLOC_ARM_DMA_BUF_MODULE
-	/*shared file descriptor for dma_buf sharing*/
+	/*
+	 * Shared file descriptor for dma_buf sharing. This must be the first element in the
+	 * structure so that binder knows where it is and can properly share it between
+	 * processes.
+	 * DO NOT MOVE THIS ELEMENT!
+	 */
 	int     share_fd;
 #endif
-	int     magic;
-	int     flags;
-	int     usage;
-	int     size;
-	int     width;
-	int     height;
-	int     format;
-	int     stride;
-	void    *base;
-	int     lockState;
-	int     writeOwner;
-	int     pid;
 
-	mali_gralloc_yuv_info yuv_info;
-
-	// Following members are for UMP memory only
-#if GRALLOC_ARM_UMP_MODULE
-	int     ump_id;
-	int     ump_mem_handle;
-#define GRALLOC_ARM_UMP_NUM_INTS 2
-#else
-#define GRALLOC_ARM_UMP_NUM_INTS 0
-#endif
-
-    // Following members is for framebuffer only
-    int     fd;//to mmap osd memory 
-    //current buffer offset from framebuffer base
-	int     offset;
+	int     share_attr_fd;
 
 #if GRALLOC_ARM_DMA_BUF_MODULE
 	ion_user_handle_t ion_hnd;
-#define GRALLOC_ARM_DMA_BUF_NUM_INTS 2
-#else
-#define GRALLOC_ARM_DMA_BUF_NUM_INTS 0
 #endif
 
-#if GRALLOC_ARM_DMA_BUF_MODULE
-#define GRALLOC_ARM_NUM_FDS 1
-#else
-#define GRALLOC_ARM_NUM_FDS 0
+	// ints
+	int        magic;
+	int        req_format;
+	uint64_t   internal_format;
+	int        byte_stride;
+	int        flags;
+	int        usage;
+	int        size;
+	int        width;
+	int        height;
+    int        format;
+	int        internalWidth;
+	int        internalHeight;
+	int        stride;
+	union {
+		void*    base;
+		uint64_t padding;
+	};
+	int        lockState;
+	int        writeOwner;
+	int        pid;
+
+	// locally mapped shared attribute area
+	union {
+		void*    attr_base;
+		uint64_t padding3;
+	};
+
+	mali_gralloc_yuv_info yuv_info;
+
+    // Following members is for framebuffer only
+	int     fd; //to mmap osd memory
+    //current buffer offset from framebuffer base
+	union {
+		off_t    offset;
+		uint64_t padding4;
+	};
+
+	// Following members are for UMP memory only
+#if GRALLOC_ARM_UMP_MODULE
+	ump_secure_id ump_id;
+	union {
+		void*    ump_mem_handle;
+		uint64_t padding5;
+	};
 #endif
+    uint64_t padding_1;
+    uint64_t padding_2;
+    uint64_t padding_3;
+    uint64_t padding_4;
 
 #ifdef __cplusplus
 	/*
-	 * We track the number of integers in the structure. There are 11 unconditional
-	 * integers (magic - pid, yuv_info, fd and offset). The GRALLOC_ARM_XXX_NUM_INTS
-	 * variables are used to track the number of integers that are conditionally
-	 * included.
+	 * We track the number of integers in the structure. There are 16 unconditional
+	 * integers (magic - pid, yuv_info, fd and offset). Note that the fd element is
+	 * considered an int not an fd because it is not intended to be used outside the
+	 * surface flinger process. The GRALLOC_ARM_NUM_INTS variable is used to track the
+	 * number of integers that are conditionally included. Similar considerations apply
+	 * to the number of fds.
 	 */
-	static const int sNumInts = 15 + GRALLOC_ARM_UMP_NUM_INTS + GRALLOC_ARM_DMA_BUF_NUM_INTS;
 	static const int sNumFds = GRALLOC_ARM_NUM_FDS;
 	static const int sMagic = 0x3141592;
 
 #if GRALLOC_ARM_UMP_MODULE
 	private_handle_t(int flags, int usage, int size, void *base, int lock_state, ump_secure_id secure_id, ump_handle handle):
-#if GRALLOC_ARM_DMA_BUF_MODULE
-		share_fd(-1),
-#endif
+		share_attr_fd(-1),
 		magic(sMagic),
 		flags(flags),
 		usage(usage),
@@ -225,58 +286,27 @@ struct private_handle_t
 		lockState(lock_state),
 		writeOwner(0),
 		pid(getpid()),
+		attr_base(MAP_FAILED),
 		yuv_info(MALI_YUV_NO_INFO),
-		ump_id((int)secure_id),
-		ump_mem_handle((int)handle),
-		fd(0),
-		offset(0)
-#if GRALLOC_ARM_DMA_BUF_MODULE
-		,
-		ion_hnd(0)
-#endif
-
-	{
-		version = sizeof(native_handle);
-		numFds = sNumFds;
-		numInts = sNumInts;
-	}
-#endif
-
-#if GRALLOC_ARM_DMA_BUF_MODULE
-	private_handle_t(int flags, int usage, int size, void *base, int lock_state):
-		share_fd(-1),
-		magic(sMagic),
-		flags(flags),
-		usage(usage),
-		size(size),
-		width(0),
-		height(0),
-		format(0),
-		stride(0),
-		base(base),
-		lockState(lock_state),
-		writeOwner(0),
-		pid(getpid()),
-		yuv_info(MALI_YUV_NO_INFO),
-#if GRALLOC_ARM_UMP_MODULE
-		ump_id((int)UMP_INVALID_SECURE_ID),
-		ump_mem_handle((int)UMP_INVALID_MEMORY_HANDLE),
-#endif
 		fd(0),
 		offset(0),
-		ion_hnd(0)
+		ump_id(secure_id),
+		ump_mem_handle(handle)
 
 	{
 		version = sizeof(native_handle);
 		numFds = sNumFds;
-		numInts = sNumInts;
+		numInts = NUM_INTS_IN_PRIVATE_HANDLE;
 	}
-
 #endif
 
-	private_handle_t(int flags, int usage, int size, void *base, int lock_state, int fb_file, int fb_offset):
+	private_handle_t(int flags, int usage, int size, void *base, int lock_state):
 #if GRALLOC_ARM_DMA_BUF_MODULE
 		share_fd(-1),
+#endif
+		share_attr_fd(-1),
+#if GRALLOC_ARM_DMA_BUF_MODULE
+		ion_hnd(ION_INVALID_HANDLE),
 #endif
 		magic(sMagic),
 		flags(flags),
@@ -290,22 +320,60 @@ struct private_handle_t
 		lockState(lock_state),
 		writeOwner(0),
 		pid(getpid()),
+		attr_base(MAP_FAILED),
 		yuv_info(MALI_YUV_NO_INFO),
+		fd(0),
+		offset(0)
 #if GRALLOC_ARM_UMP_MODULE
-		ump_id((int)UMP_INVALID_SECURE_ID),
-		ump_mem_handle((int)UMP_INVALID_MEMORY_HANDLE),
+		,ump_id(UMP_INVALID_SECURE_ID),
+		ump_mem_handle(UMP_INVALID_MEMORY_HANDLE)
 #endif
+
+
+	{
+		version = sizeof(native_handle);
+		numFds = sNumFds;
+		numInts = NUM_INTS_IN_PRIVATE_HANDLE;
+	}
+
+	private_handle_t(int flags, int usage, int size, void *base, int lock_state, int fb_file, off_t fb_offset, int unused):
+#if GRALLOC_ARM_DMA_BUF_MODULE
+		share_fd(-1),
+#endif
+		share_attr_fd(-1),
+#if GRALLOC_ARM_DMA_BUF_MODULE
+		ion_hnd(ION_INVALID_HANDLE),
+#endif
+		magic(sMagic),
+		flags(flags),
+		usage(usage),
+		size(size),
+		width(0),
+		height(0),
+		format(0),
+		stride(0),
+		base(base),
+		lockState(lock_state),
+		writeOwner(0),
+		pid(getpid()),
+		attr_base(MAP_FAILED),
+		yuv_info(MALI_YUV_NO_INFO),
 		fd(fb_file),
 		offset(fb_offset)
-#if GRALLOC_ARM_DMA_BUF_MODULE
-		,
-		ion_hnd(0)
+
+#if GRALLOC_ARM_UMP_MODULE
+		,ump_id(UMP_INVALID_SECURE_ID),
+		ump_mem_handle(UMP_INVALID_MEMORY_HANDLE)
 #endif
 
 	{
 		version = sizeof(native_handle);
 		numFds = sNumFds;
-		numInts = sNumInts;
+		numInts = NUM_INTS_IN_PRIVATE_HANDLE;
+        /*
+         * because -Werror option, need to remove this warning;
+         */
+        (void)unused;
 	}
 
 	~private_handle_t()
@@ -318,25 +386,26 @@ struct private_handle_t
 		return (flags & PRIV_FLAGS_FRAMEBUFFER) ? true : false;
 	}
 
-	static int validate(const native_handle *h)
+	static int validate(const native_handle* h)
 	{
-		const private_handle_t *hnd = (const private_handle_t *)h;
-
-		if (!h || h->version != sizeof(native_handle) || h->numInts != sNumInts || h->numFds != sNumFds || hnd->magic != sMagic)
+		const private_handle_t* hnd = (const private_handle_t*)h;
+		if (!h ||
+		    h->version != sizeof(native_handle) ||
+		    h->numInts != NUM_INTS_IN_PRIVATE_HANDLE ||
+		    h->numFds != sNumFds ||
+		    hnd->magic != sMagic)
 		{
 			return -EINVAL;
 		}
-
 		return 0;
 	}
 
-	static private_handle_t *dynamicCast(const native_handle *in)
+	static private_handle_t* dynamicCast(const native_handle* in)
 	{
 		if (validate(in) == 0)
 		{
-			return (private_handle_t *) in;
+			return (private_handle_t*) in;
 		}
-
 		return NULL;
 	}
 #endif

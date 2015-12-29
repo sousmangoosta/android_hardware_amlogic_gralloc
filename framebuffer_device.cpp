@@ -16,42 +16,40 @@
  * limitations under the License.
  */
 
-#include <stdio.h>
-#include <stdlib.h>
 #include <string.h>
 #include <errno.h>
 #include <fcntl.h>
+#include <stdlib.h>
 #include <sys/ioctl.h>
 #include <linux/fb.h>
+#include "gralloc_priv.h"
+#include <hardware/hwcomposer_defs.h>
 
 #include <cutils/log.h>
 #include <cutils/atomic.h>
 #include <hardware/hardware.h>
 #include <hardware/gralloc.h>
-#include <sys/ioctl.h>
-#include <ion/ion.h>
-#include <linux/ion.h>
-#include "gralloc_priv.h"
-#include <hardware/hwcomposer_defs.h>
 
 #include <GLES/gl.h>
-
-#ifdef MALI_VSYNC_EVENT_REPORT_ENABLE
-#include "gralloc_vsync_report.h"
-#endif
 
 #include "alloc_device.h"
 #include "gralloc_priv.h"
 #include "gralloc_helper.h"
+#include "gralloc_vsync.h"
 
-//TODO: NEED CHANGE NAME TO BE MORE READABLE!!
-struct framebuffer_t{
-    struct framebuffer_device_t base;
-    struct framebuffer_info_t fb_info;
-    struct private_handle_t*  fb_hnd;
-};
+#define OSD_AFBCD "/sys/class/graphics/fb0/osd_afbcd"
 
-static int swapInterval = 1;
+static void write_sys_int(const char *path, int val)
+{
+	char cmd[16];
+	int fd = open(path, O_RDWR);
+
+	if (fd >= 0) {
+		sprintf(cmd, "%d", val);
+		write(fd, cmd, strlen(cmd));
+		close(fd);
+	}
+}
 
 static int fb_set_swap_interval(struct framebuffer_device_t* dev, int interval)
 {
@@ -64,49 +62,68 @@ static int fb_set_swap_interval(struct framebuffer_device_t* dev, int interval)
 		interval = dev->maxSwapInterval;
 	}
 
-	swapInterval = interval;
+	private_module_t* m = reinterpret_cast<private_module_t*>(dev->common.module);
+	m->swapInterval = interval;
+
+	if (0 == interval) gralloc_vsync_disable(dev);
+	else gralloc_vsync_enable(dev);
 
 	return 0;
 }
 
 static int init_frame_buffer(struct private_module_t* module,struct framebuffer_t* fb)
 {
-    if(fb->fb_hnd != NULL) {
-        ALOGD("init already called before.");
-        return 0;
-    }
-    pthread_mutex_lock(&module->lock);
-    framebuffer_info_t* fbinfo = &(fb->fb_info);
-    fbinfo->displayType = HWC_DISPLAY_PRIMARY;
-    fbinfo->fbIdx = getOsdIdx(fbinfo->displayType);
+	if (fb->fb_hnd != NULL)
+	{
+	    ALOGD("init already called before.");
+	    return 0;
+	}
+	pthread_mutex_lock(&module->lock);
+	framebuffer_info_t* fbinfo = &(fb->fb_info);
+	fbinfo->displayType = HWC_DISPLAY_PRIMARY;
+	fbinfo->fbIdx = getOsdIdx(fbinfo->displayType);
 
 	int err = init_frame_buffer_locked(fbinfo);
-    int bufferSize = fbinfo->finfo.line_length * fbinfo->info.yres;
+	int bufferSize = fbinfo->finfo.line_length * fbinfo->info.yres;
 
-    // Create a "fake" buffer object for the entire frame buffer memory, and store it in the module
+	// Create a "fake" buffer object for the entire frame buffer memory, and store it in the module
 	fb->fb_hnd = new private_handle_t(private_handle_t::PRIV_FLAGS_FRAMEBUFFER, 0, fbinfo->fbSize, 0,
-	                                           0, fbinfo->fd, bufferSize);
-    ALOGD("init_frame_buffer get frame size %d",bufferSize);
-    
-    //Register the handle.
-    module->base.registerBuffer(&(module->base),fb->fb_hnd);
-    
+											0, fbinfo->fd, bufferSize, 0);
+	ALOGD("init_frame_buffer get frame size %d",bufferSize);
+
+	//init fb_info
+	framebuffer_mapper_t* m = NULL;
+	private_handle_t *hnd = (private_handle_t *)fb->fb_hnd;
+	if (hnd->usage & GRALLOC_USAGE_EXTERNAL_DISP)
+	{
+		m = &(module->fb_external);
+	}
+	else
+	{
+		m = &(module->fb_primary);
+	}
+	m->fb_info = fb->fb_info;
+	//m->fb_info = &(fb->fb_info);
+
+	//Register the handle.
+	module->base.registerBuffer(&(module->base),fb->fb_hnd);
+
 	pthread_mutex_unlock(&module->lock);
 	return err;
 }
 
 static int fb_post(struct framebuffer_device_t* dev, buffer_handle_t buffer){
 	private_module_t* priv_t = reinterpret_cast<private_module_t*>(dev->common.module);
-    framebuffer_t* fb = reinterpret_cast<framebuffer_t*>(dev);
-    framebuffer_info_t* fbinfo = &(fb->fb_info);
-    int display_type = fbinfo->displayType;
-    
+	framebuffer_t* fb = reinterpret_cast<framebuffer_t*>(dev);
+	framebuffer_info_t* fbinfo = &(fb->fb_info);
+	int display_type = fbinfo->displayType;
+
 /*	framebuffer_mapper_t* m = &(priv_t->fb_primary);
 #ifdef DEBUG_EXTERNAL_DISPLAY_ON_PANEL
-	if(display_type == HWC_DISPLAY_EXTERNAL)
+	if (display_type == HWC_DISPLAY_EXTERNAL)
 		ALOGD("fbpost hdmi on panel");
 #else
-	if(display_type == HWC_DISPLAY_EXTERNAL)
+	if (display_type == HWC_DISPLAY_EXTERNAL)
 		m = &(priv_t->fb_external);
 #endif
 */
@@ -114,42 +131,36 @@ static int fb_post(struct framebuffer_device_t* dev, buffer_handle_t buffer){
 	{
 		return -EINVAL;
 	}
-
     if (fbinfo->currentBuffer)
 	{
 		priv_t->base.unlock(&priv_t->base, fbinfo->currentBuffer);
 		fbinfo->currentBuffer = 0;
 	}
-
 	private_handle_t const* hnd = reinterpret_cast<private_handle_t const*>(buffer);
-	if (hnd->flags & private_handle_t::PRIV_FLAGS_FRAMEBUFFER){
-    	priv_t->base.lock(&priv_t->base, buffer, private_module_t::PRIV_USAGE_LOCKED_FOR_POST,
-    	0, 0, fbinfo->info.xres, fbinfo->info.yres, NULL);
-
-        int rtn = fb_post_locked(fbinfo,buffer);
-        if(rtn < 0){
-            //post fail.
-            ALOGD("fb_post_locked return error %d",rtn);
-            priv_t->base.unlock(&priv_t->base, buffer); 
-            return rtn;
-        }
-
+	if (hnd->flags & private_handle_t::PRIV_FLAGS_FRAMEBUFFER)
+	{
+		priv_t->base.lock(&priv_t->base, buffer, private_module_t::PRIV_USAGE_LOCKED_FOR_POST,
+									0, 0, fbinfo->info.xres, fbinfo->info.yres, NULL);
+		int rtn = fb_post_locked(fbinfo,buffer);
+		if (rtn < 0)
+		{
+			//post fail.
+			ALOGD("fb_post_locked return error %d",rtn);
+			priv_t->base.unlock(&priv_t->base, buffer);
+			return rtn;
+		}
 	} else {
 		void* fb_vaddr;
 		void* buffer_vaddr;
-
-		priv_t->base.lock(&priv_t->base, priv_t->fb_primary.framebuffer, GRALLOC_USAGE_SW_WRITE_RARELY, 
+		priv_t->base.lock(&priv_t->base, priv_t->fb_primary.framebuffer, GRALLOC_USAGE_SW_WRITE_RARELY,
 				0, 0, fbinfo->info.xres, fbinfo->info.yres, &fb_vaddr);
-
-		priv_t->base.lock(&priv_t->base, buffer, GRALLOC_USAGE_SW_READ_RARELY, 
+		priv_t->base.lock(&priv_t->base, buffer, GRALLOC_USAGE_SW_READ_RARELY,
 				0, 0, fbinfo->info.xres, fbinfo->info.yres, &buffer_vaddr);
-
 		memcpy(fb_vaddr, buffer_vaddr, fbinfo->finfo.line_length * fbinfo->info.yres);
-
-		priv_t->base.unlock(&priv_t->base, buffer); 
-		priv_t->base.unlock(&priv_t->base, priv_t->fb_primary.framebuffer); 
+		priv_t->base.unlock(&priv_t->base, buffer);
+		priv_t->base.unlock(&priv_t->base, priv_t->fb_primary.framebuffer);
 	}
-    return 0;
+	return 0;
 }
 
 static int fb_close(struct hw_device_t *device)
@@ -160,30 +171,30 @@ static int fb_close(struct hw_device_t *device)
 #if GRALLOC_ARM_UMP_MODULE
 		ump_close();
 #endif
-        if(dev->fb_hnd) {
-            #if 0
-            hw_module_t * pmodule = NULL;
-    		private_module_t *m = NULL;
-    		if (hw_get_module(GRALLOC_HARDWARE_MODULE_ID, (const hw_module_t **)&pmodule) == 0)
-    		{
-    			m = reinterpret_cast<private_module_t *>(pmodule);
-                m->base.unregisterBuffer(&(m->base),dev->fb_hnd);
-    		}
-            close(dev->fb_info.fd);
-            dev->fb_info.fd= -1;
-            #endif
+		if (dev->fb_hnd)
+		{
+			#if 0
+			hw_module_t * pmodule = NULL;
+			private_module_t *m = NULL;
+			if (hw_get_module(GRALLOC_HARDWARE_MODULE_ID, (const hw_module_t **)&pmodule) == 0)
+			{
+				m = reinterpret_cast<private_module_t *>(pmodule);
+				m->base.unregisterBuffer(&(m->base),dev->fb_hnd);
+			}
+			close(dev->fb_info.fd);
+			dev->fb_info.fd= -1;
+			#endif
 
-            delete dev->fb_hnd;
-            dev->fb_hnd = 0;
-        }
+			delete dev->fb_hnd;
+			dev->fb_hnd = 0;
+		}
 
-        delete dev;
+		delete dev;
 	}
-
 	return 0;
 }
 
-int compositionComplete(struct framebuffer_device_t *dev)
+int compositionComplete(struct framebuffer_device_t* dev)
 {
 	/* By doing a finish here we force the GL driver to start rendering
 	   all the drawcalls up to this point, and to wait for the rendering to be complete.*/
@@ -202,51 +213,66 @@ int compositionComplete(struct framebuffer_device_t *dev)
 	return 0;
 }
 
-int framebuffer_device_open(hw_module_t const *module, const char *name, hw_device_t **device)
+int framebuffer_device_open(hw_module_t const* module, const char* name, hw_device_t** device)
 {
 	int status = -EINVAL;
-#if 0    
-	alloc_device_t* gralloc_device;
-	status = gralloc_open(module, &gralloc_device);
 
+#if 0
+	alloc_device_t* gralloc_device;
+#if DISABLE_FRAMEBUFFER_HAL == 1
+	AERR("Framebuffer HAL not support/disabled %s",
+#ifdef MALI_DISPLAY_VERSION
+	"with MALI display enable");
+#else
+	"");
+#endif
+	return -ENODEV;
+#endif
+	status = gralloc_open(module, &gralloc_device);
 	if (status < 0)
 	{
 		return status;
 	}
 #endif
-
-    /*Init the framebuffer data*/
-#if MESON_SDK_VERSION > 22
-    /*
-     * later than lollipop
-     * */
-    framebuffer_t *fb = (framebuffer_t *)malloc(sizeof(framebuffer_t));//new framebuffer_t();
+#if DISABLE_FRAMEBUFFER_HAL == 1
+	AERR("Framebuffer HAL not support/disabled %s",
+#ifdef MALI_DISPLAY_VERSION
+	"with MALI display enable");
 #else
-    framebuffer_t *fb = new framebuffer_t();
+	"");
 #endif
+	return -ENODEV;
+#endif
+
+	if (osd_afbcd_enable()) {
+		write_sys_int(OSD_AFBCD, 1);
+	} else {
+		write_sys_int(OSD_AFBCD, 0);
+	}
+	/*Init the framebuffer data*/
+	framebuffer_t *fb = new framebuffer_t();
 	memset(fb, 0, sizeof(*fb));
 
-    framebuffer_device_t *dev = &(fb->base);
-    framebuffer_info_t *fbinfo = &(fb->fb_info);
+	framebuffer_device_t *dev = &(fb->base);
+	framebuffer_info_t *fbinfo = &(fb->fb_info);
 
-    /*get gralloc module to register framebuffer*/
+	/*get gralloc module to register framebuffer*/
 	private_module_t* priv_t = (private_module_t*)module;
 	framebuffer_mapper_t* m =&(priv_t->fb_primary);
 	status = init_frame_buffer(priv_t,fb);
-
 	if (status < 0)
 	{
 	#if 0
 		gralloc_close(gralloc_device);
-    #endif
-        delete fb;
+	#endif
+		delete fb;
 		return status;
 	}
 
 	/* initialize the procs */
 	dev->common.tag = HARDWARE_DEVICE_TAG;
 	dev->common.version = 0;
-	dev->common.module = const_cast<hw_module_t *>(module);
+	dev->common.module = const_cast<hw_module_t*>(module);
 	dev->common.close = fb_close;
 	dev->setSwapInterval = fb_set_swap_interval;
 	dev->post = fb_post;
@@ -265,9 +291,8 @@ int framebuffer_device_open(hw_module_t const *module, const char *name, hw_devi
 	const_cast<int&>(dev->minSwapInterval) = 0;
 	const_cast<int&>(dev->maxSwapInterval) = 1;
 	*device = &dev->common;
-	status = 0;
+
+	gralloc_vsync_enable(dev);
 
 	return status;
 }
-
-
