@@ -249,8 +249,16 @@ int framebuffer_device_open(hw_module_t const* module, const char* name, hw_devi
 	} else {
 		write_sys_int(OSD_AFBCD, 0);
 	}
+#if PLATFORM_SDK_VERSION > 22
+	/*
+	 * later than lollipop
+	 * */
+	framebuffer_t *fb = (framebuffer_t *)malloc(sizeof(framebuffer_t));//new framebuffer_t();
+#else
 	/*Init the framebuffer data*/
 	framebuffer_t *fb = new framebuffer_t();
+#endif
+
 	memset(fb, 0, sizeof(*fb));
 
 	framebuffer_device_t *dev = &(fb->base);
