@@ -373,6 +373,36 @@ static bool get_blob_stride_and_size(int width, int height, int* pixel_stride, i
 	return true;
 }
 
+static bool get_yuv_420_888_stride_and_size(int width, int height, int* pixel_stride, int* byte_stride, size_t* size)
+{
+	int luma_pixel_stride;
+
+	if ((width & 1) || (height & 1))
+	{
+		return false;
+	}
+
+	luma_pixel_stride = GRALLOC_ALIGN(width, 16);
+
+	if (size != NULL)
+	{
+		int chroma_size = luma_pixel_stride * (height / 2);
+		*size = luma_pixel_stride * height + chroma_size;
+	}
+
+	if (byte_stride != NULL)
+	{
+		*byte_stride = luma_pixel_stride;
+	}
+
+	if (pixel_stride != NULL)
+	{
+		*pixel_stride = luma_pixel_stride;
+	}
+
+	return true;
+}
+
 /*
  * Computes the strides and size for an AFBC 8BIT YUV 4:2:2 buffer
  *
@@ -852,6 +882,9 @@ static int alloc_device_alloc(alloc_device_t* dev, int w, int h, int format, int
 				 */
 			case HAL_PIXEL_FORMAT_BLOB:
 				get_blob_stride_and_size(w, h, &pixel_stride, &byte_stride, &size, type);
+				break;
+			case HAL_PIXEL_FORMAT_YCbCr_420_888:
+				get_yuv_420_888_stride_and_size(w, h, &pixel_stride, &byte_stride, &size);
 				break;
 			default:
 				return -EINVAL;

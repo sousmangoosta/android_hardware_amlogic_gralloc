@@ -262,11 +262,90 @@ static int gralloc_lock(gralloc_module_t const* module, buffer_handle_t handle, 
 	{
 		hnd->writeOwner = usage & GRALLOC_USAGE_SW_WRITE_MASK;
 	}
-	if (usage & (GRALLOC_USAGE_SW_READ_MASK | GRALLOC_USAGE_SW_WRITE_MASK))
+	if ((usage & (GRALLOC_USAGE_SW_READ_MASK | GRALLOC_USAGE_SW_WRITE_MASK))
+	   || (usage & GRALLOC_USAGE_HW_CAMERA_MASK)
+	   || (usage & GRALLOC_USAGE_HW_VIDEO_ENCODER))
 	{
 		*vaddr = (void*)hnd->base;
 	}
 	return 0;
+}
+
+static int gralloc_lock_ycbcr(gralloc_module_t const* module,
+                        buffer_handle_t handle, int usage,
+                        int l, int t, int w, int h,
+                        android_ycbcr *ycbcr)
+{
+
+	if (!ycbcr) {
+		AERR("gralloc_lock_ycbcr got NULL ycbcr struct");
+		return -EINVAL;
+	}
+
+	private_module_t *gr = (private_module_t *)module;
+	private_handle_t *hnd = (private_handle_t *)handle;
+	if (!gr || (private_handle_t::validate(hnd) < 0)) {
+		AERR("gralloc_lock_ycbcr bad handle\n");
+		return -EINVAL;
+	}
+
+	// Validate usage
+	// For now, only allow camera write, software read.
+	bool sw_read = (0 != (usage & GRALLOC_USAGE_SW_READ_MASK));
+	bool hw_cam_write = (usage & GRALLOC_USAGE_HW_CAMERA_WRITE);
+	bool sw_read_allowed = (0 != (hnd->usage & GRALLOC_USAGE_SW_READ_MASK));
+
+	if ( (!hw_cam_write && !sw_read) ||
+		(sw_read && !sw_read_allowed) ) {
+		AERR("gralloc_lock_ycbcr usage mismatch usage:0x%x cb->usage:0x%x\n",
+		usage, hnd->usage);
+		return -EINVAL;
+	}
+
+	uint8_t *cpu_addr = NULL;
+	cpu_addr = (uint8_t *)hnd->base;
+
+	// Calculate offsets to underlying YUV data
+	size_t yStride;
+	size_t cStride;
+	size_t yOffset;
+	size_t uOffset;
+	size_t vOffset;
+	size_t cStep;
+	switch (hnd->format) {
+		case HAL_PIXEL_FORMAT_YCrCb_420_SP: //this is NV21
+		case HAL_PIXEL_FORMAT_YCbCr_420_888:
+			yStride = hnd->width;
+			cStride = hnd->width;
+			yOffset = 0;
+			vOffset = yStride * hnd->height;
+			uOffset = vOffset + 1;
+			cStep = 2;
+			break;
+		default:
+			AERR("gralloc_lock_ycbcr unexpected internal format %x",
+			hnd->format);
+			return -EINVAL;
+	}
+
+	ycbcr->y = cpu_addr + yOffset;
+	ycbcr->cb = cpu_addr + uOffset;
+	ycbcr->cr = cpu_addr + vOffset;
+	ycbcr->ystride = yStride;
+	ycbcr->cstride = cStride;
+	ycbcr->chroma_step = cStep;
+
+	// Zero out reserved fields
+	memset(ycbcr->reserved, 0, sizeof(ycbcr->reserved));
+
+#if 0
+	ALOGV("gralloc_lock_ycbcr success. usage: %x, ycbcr.y: %p, .cb: %p, .cr: %p, "
+		".ystride: %d , .cstride: %d, .chroma_step: %d", usage,
+		ycbcr->y, ycbcr->cb, ycbcr->cr, ycbcr->ystride, ycbcr->cstride,
+		ycbcr->chroma_step);
+#endif
+
+    return 0;
 }
 
 static int gralloc_unlock(gralloc_module_t const* module, buffer_handle_t handle)
@@ -313,6 +392,7 @@ private_module_t::private_module_t()
 	base.registerBuffer = gralloc_register_buffer;
 	base.unregisterBuffer = gralloc_unregister_buffer;
 	base.lock = gralloc_lock;
+	base.lock_ycbcr = gralloc_lock_ycbcr;
 	base.unlock = gralloc_unlock;
 	base.perform = NULL;
 	INIT_ZERO(base.reserved_proc);
