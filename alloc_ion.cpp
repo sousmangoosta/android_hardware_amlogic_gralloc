@@ -71,6 +71,9 @@ int alloc_backend_alloc(alloc_device_t* dev, size_t size, int usage, buffer_hand
 	{
 		ret = ion_alloc(m->ion_client, size, 0, ION_HEAP_CARVEOUT_MASK,
 					ion_flags, &ion_hnd);
+		if (ret != 0)/*try alloced from custom:codec_mm*/
+			ret = ion_alloc(m->ion_client, size, 0, 1<<ION_HEAP_TYPE_CUSTOM,
+					ion_flags, &ion_hnd);
 	} else
 	{
 		ret = ion_alloc(m->ion_client, size, 0, heap_mask,
