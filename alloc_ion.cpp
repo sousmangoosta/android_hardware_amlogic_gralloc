@@ -47,6 +47,12 @@ int alloc_backend_alloc(alloc_device_t* dev, size_t size, int usage, buffer_hand
 	static int support_protected = 1; /* initially, assume we support protected memory */
 	int lock_state = 0;
 
+#define ION_HEAP_SECURE_MASK 1
+
+	if (usage & GRALLOC_USAGE_PROTECTED)
+	{
+		usage &= ~GRALLOC_USAGE_PROTECTED;
+	}
 	/* Select heap type based on usage hints */
 	if (usage & GRALLOC_USAGE_PROTECTED)
 	{
