@@ -816,6 +816,40 @@ static int alloc_device_alloc(alloc_device_t* dev, int w, int h, int format, int
 #endif
 	}
 #endif
+	/* Pick the right concrete pixel format given the endpoints as encoded in
+	 *  the usage bits.  Every end-point pair needs explicit listing here.
+	 */
+	if (format == HAL_PIXEL_FORMAT_IMPLEMENTATION_DEFINED) {
+		// Camera as producer
+		if (usage & GRALLOC_USAGE_HW_CAMERA_WRITE) {
+			if (usage & GRALLOC_USAGE_HW_TEXTURE) {
+				// Camera-to-display is NV21
+				format = HAL_PIXEL_FORMAT_YCrCb_420_SP;
+			} else if (usage & GRALLOC_USAGE_HW_VIDEO_ENCODER) {
+				// Camera-to-encoder is NV21
+				format = HAL_PIXEL_FORMAT_YCrCb_420_SP;
+			} else if ((usage & GRALLOC_USAGE_HW_CAMERA_MASK) ==
+					GRALLOC_USAGE_HW_CAMERA_ZSL) {
+				// Camera-to-ZSL-queue is NV21
+				format = HAL_PIXEL_FORMAT_YCrCb_420_SP;
+			}
+		}
+		if (usage & GRALLOC_USAGE_HW_COMPOSER) {
+			if (usage & GRALLOC_USAGE_HW_TEXTURE) {
+				// VirtualDisplaySurface-to-encoder is NV21
+				format = HAL_PIXEL_FORMAT_YCrCb_420_SP;
+			} else if (usage & GRALLOC_USAGE_HW_VIDEO_ENCODER) {
+				// VirtualDisplaySurface-to-encoder is NV21
+				format = HAL_PIXEL_FORMAT_YCrCb_420_SP;
+			}
+		}
+		if (format == HAL_PIXEL_FORMAT_IMPLEMENTATION_DEFINED) {
+			ALOGE("gralloc_alloc: Requested auto format selection, "
+					"but no known format for this usage: %d x %d, usage %x",
+					w, h, usage);
+			return -EINVAL;
+		}
+	}
 
 	/* Some formats require an internal width and height that may be used by
 	 * consumers/producers.

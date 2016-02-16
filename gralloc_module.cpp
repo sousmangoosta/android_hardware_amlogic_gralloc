@@ -322,6 +322,14 @@ static int gralloc_lock_ycbcr(gralloc_module_t const* module,
 			uOffset = vOffset + 1;
 			cStep = 2;
 			break;
+		case HAL_PIXEL_FORMAT_YV12:
+			yStride = GRALLOC_ALIGN(hnd->width, 16);
+			cStride = GRALLOC_ALIGN(yStride / 2, 16);
+			yOffset = 0;
+			vOffset = yStride * hnd->height;
+			uOffset = vOffset + cStride * hnd->height / 2;
+			cStep = 1;
+			break;
 		default:
 			AERR("gralloc_lock_ycbcr unexpected internal format %x",
 			hnd->format);
