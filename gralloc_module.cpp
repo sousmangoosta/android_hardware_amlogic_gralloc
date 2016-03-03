@@ -251,13 +251,17 @@ static int gralloc_unregister_buffer(gralloc_module_t const* module, buffer_hand
 
 static int gralloc_lock(gralloc_module_t const* module, buffer_handle_t handle, int usage, int l, int t, int w, int h, void** vaddr)
 {
+	private_handle_t* hnd = (private_handle_t*)handle;
 	if (private_handle_t::validate(handle) < 0)
 	{
 		AERR("Locking invalid buffer %p, returning error", handle );
 		return -EINVAL;
 	}
+	if (hnd->internal_format != hnd->format)
+	{
+		AERR("failed, this buffer may be compressed!!\n");
+	}
 
-	private_handle_t* hnd = (private_handle_t*)handle;
 	if (hnd->flags & private_handle_t::PRIV_FLAGS_USES_UMP || hnd->flags & private_handle_t::PRIV_FLAGS_USES_ION)
 	{
 		hnd->writeOwner = usage & GRALLOC_USAGE_SW_WRITE_MASK;
@@ -276,14 +280,18 @@ static int gralloc_lock_ycbcr(gralloc_module_t const* module,
                         int l, int t, int w, int h,
                         android_ycbcr *ycbcr)
 {
+	private_module_t *gr = (private_module_t *)module;
+	private_handle_t *hnd = (private_handle_t *)handle;
 
 	if (!ycbcr) {
 		AERR("gralloc_lock_ycbcr got NULL ycbcr struct");
 		return -EINVAL;
 	}
+	if (hnd->internal_format != hnd->format)
+	{
+		AERR("failed, this buffer may be compressed!!\n");
+	}
 
-	private_module_t *gr = (private_module_t *)module;
-	private_handle_t *hnd = (private_handle_t *)handle;
 	if (!gr || (private_handle_t::validate(hnd) < 0)) {
 		AERR("gralloc_lock_ycbcr bad handle\n");
 		return -EINVAL;

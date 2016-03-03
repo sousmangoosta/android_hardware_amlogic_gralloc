@@ -292,7 +292,7 @@ int framebuffer_device_open(hw_module_t const* module, const char* name, hw_devi
 	const_cast<uint32_t&>(dev->width) = fbinfo->info.xres;
 	const_cast<uint32_t&>(dev->height) = fbinfo->info.yres;
 	const_cast<int&>(dev->stride) = stride;
-	const_cast<int&>(dev->format) = (bits_per_pixel() == 16) ? HAL_PIXEL_FORMAT_RGB_565 : HAL_PIXEL_FORMAT_RGBX_8888;
+	const_cast<int&>(dev->format) = (bits_per_pixel() == 16) ? HAL_PIXEL_FORMAT_RGB_565 : HAL_PIXEL_FORMAT_RGBA_8888;
 	const_cast<float&>(dev->xdpi) = fbinfo->xdpi;
 	const_cast<float&>(dev->ydpi) = fbinfo->ydpi;
 	const_cast<float&>(dev->fps) = fbinfo->fps;
