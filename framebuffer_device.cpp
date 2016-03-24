@@ -189,7 +189,12 @@ static int fb_close(struct hw_device_t *device)
 			dev->fb_hnd = 0;
 		}
 
+#if PLATFORM_SDK_VERSION > 22
+		free(dev);
+		dev = NULL;
+#else
 		delete dev;
+#endif
 	}
 	return 0;
 }
@@ -273,7 +278,12 @@ int framebuffer_device_open(hw_module_t const* module, const char* name, hw_devi
 	#if 0
 		gralloc_close(gralloc_device);
 	#endif
+#if PLATFORM_SDK_VERSION > 22
+		free(fb);
+		fb = NULL;
+#else
 		delete fb;
+#endif
 		return status;
 	}
 
