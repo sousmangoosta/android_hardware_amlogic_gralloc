@@ -904,7 +904,7 @@ static int alloc_device_alloc(alloc_device_t* dev, int w, int h, int format, int
 
 			case HAL_PIXEL_FORMAT_YCrCb_420_SP:
 			case HAL_PIXEL_FORMAT_YV12:
-				if (!get_yv12_stride_and_size(w, h, &pixel_stride, &byte_stride, &size, type, &internalHeight))
+				if (!get_yv12_stride_and_size(GRALLOC_ALIGN(w, 2), GRALLOC_ALIGN(h, 2), &pixel_stride, &byte_stride, &size, type, &internalHeight))
 				{
 					return -EINVAL;
 				}
