@@ -119,7 +119,36 @@ int update_cursor_buffer_locked(struct framebuffer_info_t* cbinfo, int xres, int
 	ALOGE("vinfo. %d %d", info.xres, info.yres);
 
 	info.xoffset = info.yoffset = 0;
-	info.bits_per_pixel = 32;
+	if (bits_per_pixel() == 16)
+	{
+		/*
+		 * Explicitly request 5/6/5
+		 */
+		info.bits_per_pixel = 16;
+		info.red.offset     = 11;
+		info.red.length     = 5;
+		info.green.offset   = 5;
+		info.green.length   = 6;
+		info.blue.offset    = 0;
+		info.blue.length    = 5;
+		info.transp.offset  = 0;
+		info.transp.length  = 0;
+	}
+	else
+	{
+		/*
+		* Explicitly request 8/8/8/8
+		*/
+		info.bits_per_pixel = 32;
+		info.red.offset     = 0;
+		info.red.length     = 8;
+		info.green.offset   = 8;
+		info.green.length   = 8;
+		info.blue.offset    = 16;
+		info.blue.length    = 8;
+		info.transp.offset  = 24;
+		info.transp.length  = 8;
+	}
 
 	info.xres_virtual = info.xres = xres;
 	info.yres_virtual = info.yres = yres;
@@ -224,7 +253,37 @@ int init_cursor_buffer_locked(struct framebuffer_info_t* cbinfo)
 	ALOGE("vinfo. %d %d", info.xres, info.yres);
 
 	info.xoffset = info.yoffset = 0;
-	info.bits_per_pixel = 32;
+
+	if (bits_per_pixel() == 16)
+	{
+		/*
+		 * Explicitly request 5/6/5
+		 */
+		info.bits_per_pixel = 16;
+		info.red.offset     = 11;
+		info.red.length     = 5;
+		info.green.offset   = 5;
+		info.green.length   = 6;
+		info.blue.offset    = 0;
+		info.blue.length    = 5;
+		info.transp.offset  = 0;
+		info.transp.length  = 0;
+	}
+	else
+	{
+		/*
+		* Explicitly request 8/8/8/8
+		*/
+		info.bits_per_pixel = 32;
+		info.red.offset     = 0;
+		info.red.length     = 8;
+		info.green.offset   = 8;
+		info.green.length   = 8;
+		info.blue.offset    = 16;
+		info.blue.length    = 8;
+		info.transp.offset  = 24;
+		info.transp.length  = 8;
+	}
 
 	if (ioctl(fd, FBIOPUT_VSCREENINFO, &info) == -1)
 	{
