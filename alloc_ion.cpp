@@ -73,6 +73,11 @@ int alloc_backend_alloc(alloc_device_t* dev, size_t size, int usage, buffer_hand
 		ion_flags = ION_FLAG_CACHED | ION_FLAG_CACHED_NEEDS_SYNC;
 	}
 
+	if (usage & GRALLOC_USAGE_HW_VIDEO_ENCODER)
+	{
+		ion_flags = ION_FLAG_CACHED | ION_FLAG_CACHED_NEEDS_SYNC;
+	}
+
 	if (usage & GRALLOC_USAGE_AML_DMA_BUFFER)
 	{
 		ret = ion_alloc(m->ion_client, size, 0, ION_HEAP_CARVEOUT_MASK,
