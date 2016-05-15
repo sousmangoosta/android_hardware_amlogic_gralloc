@@ -34,7 +34,14 @@ ifeq ($(TARGET_SINGLE_EXTERNAL_DISPLAY_USE_FB1),true)
 endif
 endif
 
+LOCAL_KK=0
 ifeq ($(GPU_TYPE),t83x)
+LOCAL_KK:=1
+endif
+ifeq ($(GPU_ARCH),midgard)
+LOCAL_KK:=1
+endif
+ifeq ($(LOCAL_KK),1)
 	LOCAL_CFLAGS += -DMALI_AFBC_GRALLOC=1
 else
 	LOCAL_CFLAGS += -DMALI_AFBC_GRALLOC=0
@@ -53,8 +60,7 @@ include $(BUILD_SHARED_LIBRARY)
 include $(CLEAR_VARS)
 include $(BUILD_SYSTEM)/version_defaults.mk
 
-$(info GPU TYPE is $(GPU_TYPE))
-ifeq ($(GPU_TYPE),t83x)
+ifeq ($(LOCAL_KK),1)
 	LOCAL_CFLAGS += -DGRALLOC_T83X
 	MALI_AFBC_GRALLOC := 1
 	MALI_ARCHITECTURE_UTGARD?=0
