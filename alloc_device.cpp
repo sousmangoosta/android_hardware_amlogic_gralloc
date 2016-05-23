@@ -42,6 +42,13 @@
 #define AFBC_HEADER_BUFFER_BYTES_PER_BLOCKENTRY  16
 #define AFBC_WIDEBLK_WIDTH_ALIGN                 32
 
+// This value is platform specific and should be set according to hardware YUV planes restrictions.
+// Please note that EGL winsys platform config file needs to use the same value when importing buffers.
+#define YUV_MALI_PLANE_ALIGN 128
+
+// Default YUV stride aligment in Android
+#define YUV_ANDROID_PLANE_ALIGN 16
+
 static int gralloc_alloc_framebuffer_locked(alloc_device_t* dev, size_t size, int usage, buffer_handle_t* pHandle, int* stride, int* byte_stride)
 {
 	private_module_t* private_t = reinterpret_cast<private_module_t*>(dev->common.module);
@@ -268,13 +275,17 @@ static bool get_afbc_yuv420_8bit_stride_and_size(int width, int height, int* pix
 	{
 		width = GRALLOC_ALIGN(width, AFBC_PIXELS_PER_BLOCK);
 	}
-	height = GRALLOC_ALIGN(height, AFBC_PIXELS_PER_BLOCK);
 
 #if AFBC_YUV420_EXTRA_MB_ROW_NEEDED
 	/* If we have a greater internal height than public we set the internalHeight. This
 	 * implies that cropping will be applied of internal dimensions to fit the public one. */
 	*internalHeight += AFBC_PIXELS_PER_BLOCK;
 #endif
+
+	/* The actual height used in size calculation must include the possible extra row. But
+	 * it must also be AFBC-aligned. Only the extra row-padding should be reported back in
+	 * internalHeight. This as only this row needs to be considered when cropping. */
+	height = GRALLOC_ALIGN( *internalHeight, AFBC_PIXELS_PER_BLOCK );
 
 	yuv420_afbc_luma_stride = width;
 	yuv420_afbc_chroma_stride = GRALLOC_ALIGN(yuv420_afbc_luma_stride / 2, 16); /* Horizontal downsampling*/
@@ -283,8 +294,9 @@ static bool get_afbc_yuv420_8bit_stride_and_size(int width, int height, int* pix
 	{
 		int nblocks = width / AFBC_PIXELS_PER_BLOCK * height / AFBC_PIXELS_PER_BLOCK;
 		/* Simplification of (height * luma-stride + 2 * (height /2 * chroma_stride) */
-		*size = (yuv420_afbc_luma_stride + yuv420_afbc_chroma_stride) * height
-			+ GRALLOC_ALIGN(nblocks * AFBC_HEADER_BUFFER_BYTES_PER_BLOCKENTRY, AFBC_BODY_BUFFER_BYTE_ALIGNMENT);
+		*size =
+		    ( yuv420_afbc_luma_stride + yuv420_afbc_chroma_stride ) * height +
+		    GRALLOC_ALIGN( nblocks * AFBC_HEADER_BUFFER_BYTES_PER_BLOCKENTRY, AFBC_BODY_BUFFER_BYTE_ALIGNMENT );
 	}
 
 	if (byte_stride != NULL)
@@ -303,18 +315,19 @@ static bool get_afbc_yuv420_8bit_stride_and_size(int width, int height, int* pix
 /*
  * Computes the strides and size for an YV12 buffer
  *
- * width                Public known width of the buffer in pixels
- * height               Public known height of the buffer in pixels
+ * width                  Public known width of the buffer in pixels
+ * height                 Public known height of the buffer in pixels
  *
- * pixel_stride   (out) stride of the buffer in pixels
- * byte_stride    (out) stride of the buffer in bytes
- * size           (out) size of the buffer in bytes
- * type           (in)  if buffer should be allocated for a certain afbc type
- * internalHeight (out) Will store internal height if it is required to have a greater height than
- *                      known to public. If not it will be left untouched.
+ * pixel_stride     (out) stride of the buffer in pixels
+ * byte_stride      (out) stride of the buffer in bytes
+ * size             (out) size of the buffer in bytes
+ * type             (in)  if buffer should be allocated for a certain afbc type
+ * internalHeight   (out) Will store internal height if it is required to have a greater height than
+ *                        known to public. If not it will be left untouched.
+ * stride_alignment (in)  stride aligment value in bytes.
  */
-static bool get_yv12_stride_and_size(int width, int height,
-                                     int* pixel_stride, int* byte_stride, size_t* size, AllocType type, int* internalHeight)
+static bool get_yv12_stride_and_size(int width, int height, int* pixel_stride, int* byte_stride,
+		                     size_t* size, AllocType type, int* internalHeight, int stride_alignment)
 {
 	int luma_stride;
 
@@ -330,11 +343,11 @@ static bool get_yv12_stride_and_size(int width, int height,
 	}
 
 	/* Android assumes the buffer should be aligned to 16. */
-	luma_stride = GRALLOC_ALIGN(width, 16);
+	luma_stride = GRALLOC_ALIGN(width, stride_alignment);
 
 	if (size != NULL)
 	{
-		int chroma_stride = GRALLOC_ALIGN(luma_stride / 2, 16);
+		int chroma_stride = GRALLOC_ALIGN(luma_stride / 2, stride_alignment);
 		/* Simplification of ((height * luma_stride ) + 2 * ((height / 2) * chroma_stride)). */
 		*size = height * (luma_stride + chroma_stride);
 	}
@@ -496,12 +509,12 @@ static bool get_yuv_pX10_stride_and_size(int width, int height, int vss, int* pi
 		return false;
 	}
 
-	luma_pixel_stride = GRALLOC_ALIGN(width, 16);
-	luma_byte_stride  = GRALLOC_ALIGN(width * 2, 16);
+	luma_pixel_stride = GRALLOC_ALIGN(width, YUV_MALI_PLANE_ALIGN);
+	luma_byte_stride  = GRALLOC_ALIGN(width * 2, YUV_MALI_PLANE_ALIGN);
 
 	if (size != NULL)
 	{
-		int chroma_size = GRALLOC_ALIGN(width * 2, 16) * (height / vss);
+		int chroma_size = GRALLOC_ALIGN(width * 2, YUV_MALI_PLANE_ALIGN) * (height / vss);
 		*size = luma_byte_stride * height + chroma_size;
 	}
 
@@ -542,8 +555,8 @@ static bool get_yuv_y210_stride_and_size(int width, int height, int* pixel_strid
 		return false;
 	}
 
-	y210_pixel_stride = GRALLOC_ALIGN(width, 16);
-	y210_byte_stride  = GRALLOC_ALIGN(width * 4, 16);
+	y210_pixel_stride = GRALLOC_ALIGN(width, YUV_MALI_PLANE_ALIGN);
+	y210_byte_stride  = GRALLOC_ALIGN(width * 4, YUV_MALI_PLANE_ALIGN);
 
 	if (size != NULL)
 	{
@@ -588,8 +601,8 @@ static bool get_yuv_y0l2_stride_and_size(int width, int height, int* pixel_strid
 		return false;
 	}
 
-	y0l2_pixel_stride = GRALLOC_ALIGN(width * 4, 16); /* 4 pixels packed per line */
-	y0l2_byte_stride  = GRALLOC_ALIGN(width * 4, 16); /* Packed in 64-bit chunks, 2 x downsampled horizontally */
+	y0l2_pixel_stride = GRALLOC_ALIGN(width * 4, YUV_MALI_PLANE_ALIGN); /* 4 pixels packed per line */
+	y0l2_byte_stride  = GRALLOC_ALIGN(width * 4, YUV_MALI_PLANE_ALIGN); /* Packed in 64-bit chunks, 2 x downsampled horizontally */
 
 	if (size != NULL)
 	{
@@ -627,8 +640,8 @@ static bool get_yuv_y410_stride_and_size(int width, int height, int* pixel_strid
 {
 	int y410_byte_stride, y410_pixel_stride;
 
-	y410_pixel_stride = GRALLOC_ALIGN(width, 16);
-	y410_byte_stride  = GRALLOC_ALIGN(width * 4, 16);
+	y410_pixel_stride = GRALLOC_ALIGN(width, YUV_MALI_PLANE_ALIGN);
+	y410_byte_stride  = GRALLOC_ALIGN(width * 4, YUV_MALI_PLANE_ALIGN);
 
 	if (size != NULL)
 	{
@@ -857,7 +870,10 @@ static int alloc_device_alloc(alloc_device_t* dev, int w, int h, int format, int
 	internalWidth = w;
 	internalHeight = h;
 
-	internal_format = gralloc_select_format(format, usage);
+	internal_format = gralloc_select_format(format, usage, w*h);
+
+	alloc_for_extended_yuv = (internal_format & GRALLOC_ARM_INTFMT_EXTENDED_YUV) == GRALLOC_ARM_INTFMT_EXTENDED_YUV;
+	alloc_for_arm_afbc_yuv = (internal_format & GRALLOC_ARM_INTFMT_ARM_AFBC_YUV) == GRALLOC_ARM_INTFMT_ARM_AFBC_YUV;
 
 	if (internal_format & (GRALLOC_ARM_INTFMT_AFBC | GRALLOC_ARM_INTFMT_AFBC_SPLITBLK | GRALLOC_ARM_INTFMT_AFBC_WIDEBLK))
 	{
@@ -867,6 +883,13 @@ static int alloc_device_alloc(alloc_device_t* dev, int w, int h, int format, int
 		}
 		else if (internal_format & GRALLOC_ARM_INTFMT_AFBC_WIDEBLK)
 		{
+#if 1 != MALI_USE_YUV_AFBC_WIDEBLK
+			if (alloc_for_arm_afbc_yuv)
+			{
+				ALOGE("Unsupported format YUV AFBC WIDEBLK.");
+				return -EINVAL;
+			}
+#endif
 			type = AFBC_WIDEBLK;
 		}
 		else
@@ -875,11 +898,9 @@ static int alloc_device_alloc(alloc_device_t* dev, int w, int h, int format, int
 		}
 	}
 
-	alloc_for_extended_yuv = (internal_format & GRALLOC_ARM_INTFMT_EXTENDED_YUV) == GRALLOC_ARM_INTFMT_EXTENDED_YUV;
-	alloc_for_arm_afbc_yuv = (internal_format & GRALLOC_ARM_INTFMT_ARM_AFBC_YUV) == GRALLOC_ARM_INTFMT_ARM_AFBC_YUV;
-
 	if (!alloc_for_extended_yuv && !alloc_for_arm_afbc_yuv)
 	{
+        int yv12_align = YUV_MALI_PLANE_ALIGN;
 		switch (internal_format & GRALLOC_ARM_INTFMT_FMT_MASK)
 		{
 			case HAL_PIXEL_FORMAT_RGBA_8888:
@@ -903,8 +924,17 @@ static int alloc_device_alloc(alloc_device_t* dev, int w, int h, int format, int
 				break;
 
 			case HAL_PIXEL_FORMAT_YCrCb_420_SP:
+			case HAL_PIXEL_FORMAT_YCbCr_420_888:
 			case HAL_PIXEL_FORMAT_YV12:
-				if (!get_yv12_stride_and_size(GRALLOC_ALIGN(w, 2), GRALLOC_ALIGN(h, 2), &pixel_stride, &byte_stride, &size, type, &internalHeight))
+				// Mali subsystem prefers higher stride alignment values (128b) for YUV, but software components assume default of 16.
+				// We only need to care about YV12 as it's the only, implicit, HAL YUV format in Android.
+				if(usage & (GRALLOC_USAGE_SW_READ_MASK | GRALLOC_USAGE_SW_WRITE_MASK))
+				{
+					yv12_align = YUV_ANDROID_PLANE_ALIGN;
+				}
+
+
+				if (!get_yv12_stride_and_size(GRALLOC_ALIGN(w, 2), GRALLOC_ALIGN(h, 2), &pixel_stride, &byte_stride, &size, type, &internalHeight, yv12_align))
 				{
 					return -EINVAL;
 				}
@@ -917,9 +947,9 @@ static int alloc_device_alloc(alloc_device_t* dev, int w, int h, int format, int
 			case HAL_PIXEL_FORMAT_BLOB:
 				get_blob_stride_and_size(w, h, &pixel_stride, &byte_stride, &size, type);
 				break;
-			case HAL_PIXEL_FORMAT_YCbCr_420_888:
+			/*case HAL_PIXEL_FORMAT_YCbCr_420_888:
 				get_yuv_420_888_stride_and_size(w, h, &pixel_stride, &byte_stride, &size);
-				break;
+				break;*/
 			default:
 				return -EINVAL;
 		}

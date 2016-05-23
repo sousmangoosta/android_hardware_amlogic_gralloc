@@ -119,13 +119,14 @@ int alloc_backend_alloc(alloc_device_t* dev, size_t size, int usage, buffer_hand
 		lock_state = private_handle_t::LOCK_STATE_MAPPED;
 	}
 
-	private_handle_t *hnd = new private_handle_t( private_handle_t::PRIV_FLAGS_USES_ION, usage, size, cpu_ptr,
+	private_handle_t *hnd = new private_handle_t( private_handle_t::PRIV_FLAGS_USES_ION /*TODO ion extend*| priv_heap_flag*/, usage, size, cpu_ptr,
 	                                              lock_state );
 
 	if ( NULL != hnd )
 	{
 		hnd->share_fd = shared_fd;
 		hnd->ion_hnd = ion_hnd;
+		/*TODO ion extend hnd->min_pgsz = min_pgsz; */
 		*pHandle = hnd;
 		return 0;
 	}

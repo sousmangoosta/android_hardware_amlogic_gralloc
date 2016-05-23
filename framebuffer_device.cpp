@@ -255,9 +255,20 @@ int framebuffer_device_open(hw_module_t const* module, const char* name, hw_devi
 		write_sys_int(OSD_AFBCD, 0);
 	}
 #if PLATFORM_SDK_VERSION > 22
-	/*
-	 * later than lollipop
-	 * */
+	/* malloc is used instead of 'new' to instantiate the struct framebuffer_device_t
+	 * C++11 spec specifies that if a class/struct has a const member,default constructor 
+	 * is deleted. So, if 'new' is used to instantiate the class/struct, it will throw
+	 * error complaining about deleted constructor. Even if the struct is wrapped in a class
+	 * it will still try to use the base class constructor to initialize the members, resulting 
+	 * in error 'deleted constructor'.
+	 * This leaves two options 
+	 * Option 1: initialize the const members at the instantiation time. With {value1, value2 ..}
+	 * Which relies on the order of the members, and if members are reordered or a new member is introduced
+	 * it will end up assiging wrong value to members. Designated assignment as well has been removed in C++11
+	 * Option 2: use malloc instead of 'new' to allocate the class/struct and initialize the members in code. 
+	 * This is the only maintainable option available.
+	 */
+
 	framebuffer_t *fb = (framebuffer_t *)malloc(sizeof(framebuffer_t));//new framebuffer_t();
 #else
 	/*Init the framebuffer data*/
