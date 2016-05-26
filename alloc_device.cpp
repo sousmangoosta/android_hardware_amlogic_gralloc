@@ -42,13 +42,6 @@
 #define AFBC_HEADER_BUFFER_BYTES_PER_BLOCKENTRY  16
 #define AFBC_WIDEBLK_WIDTH_ALIGN                 32
 
-// This value is platform specific and should be set according to hardware YUV planes restrictions.
-// Please note that EGL winsys platform config file needs to use the same value when importing buffers.
-#define YUV_MALI_PLANE_ALIGN 128
-
-// Default YUV stride aligment in Android
-#define YUV_ANDROID_PLANE_ALIGN 16
-
 static int gralloc_alloc_framebuffer_locked(alloc_device_t* dev, size_t size, int usage, buffer_handle_t* pHandle, int* stride, int* byte_stride)
 {
 	private_module_t* private_t = reinterpret_cast<private_module_t*>(dev->common.module);

@@ -97,6 +97,12 @@ struct fb_dmabuf_export
 
 #define NUM_INTS_IN_PRIVATE_HANDLE ((sizeof(struct private_handle_t) - sizeof(native_handle)) / sizeof(int) - sNumFds)
 
+// This value is platform specific and should be set according to hardware YUV planes restrictions.
+// Please note that EGL winsys platform config file needs to use the same value when importing buffers.
+#define YUV_MALI_PLANE_ALIGN 32
+
+// Default YUV stride aligment in Android
+#define YUV_ANDROID_PLANE_ALIGN 16
 
 
 #if GRALLOC_ARM_UMP_MODULE
