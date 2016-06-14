@@ -67,6 +67,20 @@ int bits_per_pixel()
 	return 16;
 }
 
+#define OSD_AFBCD "/sys/class/graphics/fb0/osd_afbcd"
+
+static void write_sys_int(const char *path, int val)
+{
+	char cmd[16];
+	int fd = open(path, O_RDWR);
+
+	if (fd >= 0) {
+		sprintf(cmd, "%d", val);
+		write(fd, cmd, strlen(cmd));
+		close(fd);
+	}
+}
+
 bool osd_afbcd_enable()
 {
 	char osd_afbcd[PROPERTY_VALUE_MAX];
@@ -301,6 +315,12 @@ int init_frame_buffer_locked(struct framebuffer_info_t* fbinfo)
 	int fd = -1;
 	int i = 0;
 	char name[64];
+
+	if (osd_afbcd_enable()) {
+		write_sys_int(OSD_AFBCD, 1);
+	} else {
+		write_sys_int(OSD_AFBCD, 0);
+	}
 
 	while ((fd == -1) && device_template[i])
 	{

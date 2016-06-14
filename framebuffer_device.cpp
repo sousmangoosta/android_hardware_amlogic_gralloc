@@ -37,20 +37,6 @@
 #include "gralloc_helper.h"
 #include "gralloc_vsync.h"
 
-#define OSD_AFBCD "/sys/class/graphics/fb0/osd_afbcd"
-
-static void write_sys_int(const char *path, int val)
-{
-	char cmd[16];
-	int fd = open(path, O_RDWR);
-
-	if (fd >= 0) {
-		sprintf(cmd, "%d", val);
-		write(fd, cmd, strlen(cmd));
-		close(fd);
-	}
-}
-
 static int fb_set_swap_interval(struct framebuffer_device_t* dev, int interval)
 {
 	if (interval < dev->minSwapInterval)
@@ -249,11 +235,6 @@ int framebuffer_device_open(hw_module_t const* module, const char* name, hw_devi
 	return -ENODEV;
 #endif
 
-	if (osd_afbcd_enable()) {
-		write_sys_int(OSD_AFBCD, 1);
-	} else {
-		write_sys_int(OSD_AFBCD, 0);
-	}
 #if PLATFORM_SDK_VERSION > 22
 	/* malloc is used instead of 'new' to instantiate the struct framebuffer_device_t
 	 * C++11 spec specifies that if a class/struct has a const member,default constructor 
