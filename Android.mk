@@ -52,6 +52,7 @@ else
 	LOCAL_CFLAGS += -DMALI_AFBC_GRALLOC=0
 endif
 
+LOCAL_CFLAGS += -DPLATFORM_SDK_VERSION=$(PLATFORM_SDK_VERSION)
 LOCAL_PRELINK_MODULE := false
 LOCAL_SRC_FILES := framebuffer.cpp
 LOCAL_MODULE := libfbcnf
@@ -96,13 +97,13 @@ else
 	GRALLOC_FB_SWAP_RED_BLUE?=0
 	MALI_DDK_INCLUDES=$(MALI_LOCAL_PATH)/include $(MALI_LOCAL_PATH)/kernel/include
 	#LOCAL_MODULE_PATH := $(TARGET_OUT_SHARED_LIBRARIES)/hw
-	ifeq ($(MALI_ION),1)
+  ifeq ($(MALI_ION),1)
 		ALLOCATION_LIB := libion
 		ALLOCATOR_SPECIFIC_FILES := alloc_ion.cpp gralloc_module_ion.cpp
-	else
+  else
 		ALLOCATION_LIB := libGLES_mali
 		ALLOCATOR_SPECIFIC_FILES := alloc_ump.cpp gralloc_module_ump.cpp
-	endif
+  endif
 $(info GRALLOC_FB_SWAP_RED_BLUE1 is $(GRALLOC_FB_SWAP_RED_BLUE))
 endif
 #MALI_AFBC_GRALLOC?=1

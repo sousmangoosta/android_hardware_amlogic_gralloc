@@ -67,6 +67,7 @@ int bits_per_pixel()
 	return 16;
 }
 
+#if PLATFORM_SDK_VERSION < 24
 #define OSD_AFBCD "/sys/class/graphics/fb0/osd_afbcd"
 
 static void write_sys_int(const char *path, int val)
@@ -80,6 +81,7 @@ static void write_sys_int(const char *path, int val)
 		close(fd);
 	}
 }
+#endif
 
 bool osd_afbcd_enable()
 {
@@ -316,11 +318,13 @@ int init_frame_buffer_locked(struct framebuffer_info_t* fbinfo)
 	int i = 0;
 	char name[64];
 
+#if PLATFORM_SDK_VERSION < 24
 	if (osd_afbcd_enable()) {
 		write_sys_int(OSD_AFBCD, 1);
 	} else {
 		write_sys_int(OSD_AFBCD, 0);
 	}
+#endif
 
 	while ((fd == -1) && device_template[i])
 	{
