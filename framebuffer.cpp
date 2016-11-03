@@ -437,7 +437,7 @@ int init_frame_buffer_locked(struct framebuffer_info_t* fbinfo)
 		refreshRate = 60*1000;  // 60 Hz
 	}
 
-	if (int(info.width) <= 0 || int(info.height) <= 0)
+	if (int(info.width) <= 16 || int(info.height) <= 9)
 	{
 		// the driver doesn't return that information
 		// default to 160 dpi
