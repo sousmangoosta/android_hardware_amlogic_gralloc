@@ -59,6 +59,7 @@ int update_cursor_buffer_locked(struct framebuffer_info_t* cbinfo, int xres, int
 
 int fb_post_locked(struct framebuffer_info_t* fbinfo,buffer_handle_t buffer);
 int fb_post_with_fence_locked(struct framebuffer_info_t* fbinfo,buffer_handle_t hnd,int in_fence);
+int hwc_fb_post_with_fence_locked(struct framebuffer_info_t* fbinfo,buffer_handle_t hnd,int in_fence);
 int getOsdIdx(int display_type);
 int bits_per_pixel();
 

@@ -502,6 +502,34 @@ int init_frame_buffer_locked(struct framebuffer_info_t* fbinfo)
 	return 0;
 }
 
+int fb_post_with_fence_locked(
+			struct framebuffer_info_t* fbinfo,
+			buffer_handle_t hnd,
+			int in_fence)
+{
+#define FBIOPUT_OSD_SYNC_ADD	0x4518
+	typedef struct {
+		unsigned int    xoffset;
+		unsigned int    yoffset;
+		int             in_fen_fd;
+		int             out_fen_fd;
+	} fb_sync_request_t;
+
+	private_handle_t const* buffer = reinterpret_cast<private_handle_t const*>(hnd);
+	fb_sync_request_t sync_req;
+
+	memset(&sync_req, 0, sizeof(fb_sync_request_t));
+	sync_req.xoffset = fbinfo->info.xoffset;
+	sync_req.yoffset = buffer->offset / fbinfo->finfo.line_length;
+	// acquire fence.
+	sync_req.in_fen_fd = in_fence;
+
+	ALOGD( "req offset: %d\n", sync_req.yoffset);
+	ioctl(fbinfo->fd, FBIOPUT_OSD_SYNC_ADD, &sync_req);
+
+	return sync_req.out_fen_fd;
+}
+
 uint32_t getIonPhyAddr(struct framebuffer_info_t* fbinfo,buffer_handle_t hnd)
 {
 	private_handle_t const *pHandle = reinterpret_cast<private_handle_t const*> (hnd);
@@ -530,53 +558,52 @@ uint32_t getIonPhyAddr(struct framebuffer_info_t* fbinfo,buffer_handle_t hnd)
 	return phyData.phys_addr;
 }
 
-int fb_post_with_fence_locked(
+int hwc_fb_post_with_fence_locked(
 			struct framebuffer_info_t* fbinfo,
 			buffer_handle_t hnd,
 			int in_fence)
 {
-#define  FBIOPUT_OSD_SYNC_ADD	0x4518
-    typedef  struct{
-        unsigned int    xoffset;
-        unsigned int    yoffset;
-        int             in_fen_fd;
-        int             out_fen_fd;
-        int             width;
-        int             height;
-        int             format;
-        unsigned int    paddr;
-        unsigned int    op;
-        unsigned int    reserve;
-    } fb_sync_request_t;
+#define FBIOPUT_OSD_SYNC_RENDER_ADD	0x4519
+	typedef struct {
+		unsigned int    xoffset;
+		unsigned int    yoffset;
+		int             in_fen_fd;
+		int             out_fen_fd;
+		int             width;
+		int             height;
+		int             format;
+		unsigned int    paddr;
+		unsigned int    op;
+		unsigned int    reserve;
+	} fb_sync_request_t;
 
-    private_handle_t const* buffer = reinterpret_cast<private_handle_t const*>(hnd);
-    fb_sync_request_t sync_req;
+	private_handle_t const* buffer = reinterpret_cast<private_handle_t const*>(hnd);
+	fb_sync_request_t sync_req;
 
-    memset(&sync_req, 0, sizeof(fb_sync_request_t));
-    sync_req.xoffset = fbinfo->info.xoffset;
-    sync_req.yoffset = buffer->offset / fbinfo->finfo.line_length;
-    // acquire fence.
-    sync_req.in_fen_fd = in_fence;
+	memset(&sync_req, 0, sizeof(fb_sync_request_t));
+	sync_req.xoffset = fbinfo->info.xoffset;
+	sync_req.yoffset = buffer->offset / fbinfo->finfo.line_length;
+	// acquire fence.
+	sync_req.in_fen_fd = in_fence;
+	if (fbinfo->renderMode == 1) { // Direct composer mode.
+		sync_req.width = buffer->width;
+		sync_req.height = buffer->height;
+		sync_req.format = buffer->format;
+		sync_req.paddr = getIonPhyAddr(fbinfo, hnd);
+	} else if (fbinfo->renderMode == 2) { // GE2D composer mode.
+		sync_req.width = fbinfo->info.xres;
+		sync_req.height = fbinfo->info.yres;
+		sync_req.format = HAL_PIXEL_FORMAT_RGBA_8888;
+		unsigned int paddr = getIonPhyAddr(fbinfo, hnd);
+		if (0 != paddr)
+			sync_req.paddr = paddr + fbinfo->yOffset * fbinfo->finfo.line_length;
+	}
+	sync_req.op = fbinfo->op;
+	ALOGD( "req offset: %d, width: %d, height: %d, format: %d, addr: 0x%x, op: 0x%x\n",
+		sync_req.yoffset, sync_req.width, sync_req.height, sync_req.format, sync_req.paddr, sync_req.op);
+	ioctl(fbinfo->fd, FBIOPUT_OSD_SYNC_RENDER_ADD, &sync_req);
 
-    if (fbinfo->renderMode == 1) { // Direct composer mode.
-        sync_req.width = buffer->width;
-        sync_req.height = buffer->height;
-        sync_req.format = buffer->format;
-        sync_req.paddr = getIonPhyAddr(fbinfo, hnd);
-    } else if (fbinfo->renderMode == 2) { // GE2D composer mode.
-        sync_req.width = fbinfo->info.xres;
-        sync_req.height = fbinfo->info.yres;
-        sync_req.format = HAL_PIXEL_FORMAT_RGBA_8888;
-        unsigned int paddr = getIonPhyAddr(fbinfo, hnd);
-        if (0 != paddr)
-            sync_req.paddr = paddr + fbinfo->yOffset * fbinfo->finfo.line_length;
-    }
-    sync_req.op = fbinfo->op;
-    ALOGD( "req offset: %d, width: %d, height: %d, format: %d, addr: 0x%x, op: 0x%x\n",
-        sync_req.yoffset, sync_req.width, sync_req.height, sync_req.format, sync_req.paddr, sync_req.op);
-    ioctl(fbinfo->fd, FBIOPUT_OSD_SYNC_ADD, &sync_req);
-
-    return sync_req.out_fen_fd;
+	return sync_req.out_fen_fd;
 }
 
 int fb_post_locked(struct framebuffer_info_t* fbinfo, buffer_handle_t hnd)

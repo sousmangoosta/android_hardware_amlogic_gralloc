@@ -80,6 +80,7 @@ int alloc_backend_alloc(alloc_device_t* dev, size_t size, int usage, buffer_hand
 
 	bool layerAllocContinousBuf = false;
 #ifdef GRALLOC_APP_ALLOC_CONTINUOUS_BUF
+#if 0
 	char path[256];
 	char comm[256];
 	sprintf(path, "/proc/%d/comm", getpid());
@@ -94,6 +95,12 @@ int alloc_backend_alloc(alloc_device_t* dev, size_t size, int usage, buffer_hand
 		fclose(fp);
 		fp = NULL;
 	}
+#else
+	if (usage & GRALLOC_USAGE_HW_COMPOSER)
+	{
+		layerAllocContinousBuf = true;
+	}
+#endif
 #endif
 
 	bool allocCodecMem = false;
