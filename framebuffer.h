@@ -4,9 +4,14 @@
 #include <hardware/hardware.h>
 
 struct private_handle_t;
-
+struct private_module_t;
 
 typedef struct framebuffer_info_t{
+    // gralloc module.
+    private_module_t *grallocModule;
+
+    buffer_handle_t currentBuffer;
+
     //set by device.
     int   displayType;
     int   fbIdx;
@@ -23,9 +28,26 @@ typedef struct framebuffer_info_t{
     float fps;
     int   flipFlags;
 
-    buffer_handle_t currentBuffer;
+    // Composer mode.
+    int   renderMode;
+
+    // GE2D composer mode used only.
+    int   yOffset;
+
+    // osd blank option.
+    unsigned int op;
 }framebuffer_info_t;
 
+#define ION_IOC_MESON_PHYS_ADDR 8
+
+struct meson_phys_data{
+    int handle;
+    unsigned int phys_addr;
+    unsigned int size;
+};
+
+// get ion physical address.
+uint32_t getIonPhyAddr(struct framebuffer_info_t* fbinfo, buffer_handle_t hnd);
 
 // Initialize the framebuffer (must keep module lock before calling
 int init_frame_buffer_locked(struct framebuffer_info_t* info);

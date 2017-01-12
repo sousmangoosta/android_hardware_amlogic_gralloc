@@ -78,17 +78,48 @@ int alloc_backend_alloc(alloc_device_t* dev, size_t size, int usage, buffer_hand
 		ion_flags = ION_FLAG_CACHED | ION_FLAG_CACHED_NEEDS_SYNC;
 	}
 
+	bool layerAllocContinousBuf = false;
+#ifdef GRALLOC_APP_ALLOC_CONTINUOUS_BUF
+	char path[256];
+	char comm[256];
+	sprintf(path, "/proc/%d/comm", getpid());
+	FILE *fp = fopen(path, "r");
+	if (fp != NULL)
+	{
+		fgets(comm, 255, fp);
+		if (strstr(comm, "surfaceflinger"))
+		{
+			layerAllocContinousBuf = true;
+		}
+		fclose(fp);
+		fp = NULL;
+	}
+#endif
+
+	bool allocCodecMem = false;
 	if (usage & GRALLOC_USAGE_AML_DMA_BUFFER)
 	{
-		ret = ion_alloc(m->ion_client, size, 0, ION_HEAP_CARVEOUT_MASK,
-					ion_flags, &ion_hnd);
-		if (ret != 0)/*try alloced from custom:codec_mm*/
-			ret = ion_alloc(m->ion_client, size, 0, 1<<ION_HEAP_TYPE_CUSTOM,
-					ion_flags, &ion_hnd);
-	} else
+		allocCodecMem = true;
+	}
+
+	//alloc from carveout heap.
+	if (allocCodecMem || layerAllocContinousBuf)
+	{
+		ret = ion_alloc(m->ion_client, size, 0,
+						ION_HEAP_CARVEOUT_MASK, ion_flags, &ion_hnd);
+		if (ret != 0 && layerAllocContinousBuf) {
+			layerAllocContinousBuf = false;
+		}
+		if (ret != 0 && allocCodecMem)
+		{
+			ret = ion_alloc(m->ion_client, size, 0,
+							1<<ION_HEAP_TYPE_CUSTOM, ion_flags, &ion_hnd);
+		}
+	}
+	else
 	{
 		ret = ion_alloc(m->ion_client, size, 0, heap_mask,
-					ion_flags, &ion_hnd );
+									ion_flags, &ion_hnd);
 	}
 
 	if ( ret != 0)
@@ -128,6 +159,10 @@ int alloc_backend_alloc(alloc_device_t* dev, size_t size, int usage, buffer_hand
 		hnd->ion_hnd = ion_hnd;
 		/*TODO ion extend hnd->min_pgsz = min_pgsz; */
 		*pHandle = hnd;
+		if (layerAllocContinousBuf)
+		{
+			hnd->flags |= private_handle_t::PRIV_FLAGS_CONTINUOUS_BUF;
+		}
 		return 0;
 	}
 	else

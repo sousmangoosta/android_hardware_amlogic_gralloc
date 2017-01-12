@@ -22,6 +22,9 @@
 #include <hardware/hwcomposer_defs.h>
 #include <GLES/gl.h>
 
+#include <linux/ion.h>
+#include <ion/ion.h>
+
 #ifndef __gl_h_
 #error a
 #endif
@@ -498,43 +501,82 @@ int init_frame_buffer_locked(struct framebuffer_info_t* fbinfo)
 
 	return 0;
 }
-int fb_post_with_fence_locked(struct framebuffer_info_t* fbinfo,buffer_handle_t hnd,int in_fence)
+
+uint32_t getIonPhyAddr(struct framebuffer_info_t* fbinfo,buffer_handle_t hnd)
+{
+	private_handle_t const *pHandle = reinterpret_cast<private_handle_t const*> (hnd);
+	private_module_t *grallocModule = fbinfo->grallocModule;
+	int result = 0;
+	struct meson_phys_data phyData =
+	{
+		.handle = pHandle->share_fd,
+		.phys_addr = 0,
+		.size = 0,
+	};
+	struct ion_custom_data customData =
+	{
+		.cmd = ION_IOC_MESON_PHYS_ADDR,
+		.arg = (unsigned long)&phyData,
+	};
+
+	result = ioctl(grallocModule->ion_client, ION_IOC_CUSTOM, (unsigned long)&customData);
+
+	if (result < 0)
+	{
+		ALOGE("ion custom ioctl %x failed with code %d: %s\n",
+				ION_IOC_MESON_PHYS_ADDR, result, strerror(errno));
+	}
+
+	return phyData.phys_addr;
+}
+
+int fb_post_with_fence_locked(
+			struct framebuffer_info_t* fbinfo,
+			buffer_handle_t hnd,
+			int in_fence)
 {
 #define  FBIOPUT_OSD_SYNC_ADD	0x4518
     typedef  struct{
-	unsigned int  xoffset;
-	unsigned int  yoffset;
-	int  in_fen_fd;
-	int  out_fen_fd;
-    }fb_sync_request_t;
+        unsigned int    xoffset;
+        unsigned int    yoffset;
+        int             in_fen_fd;
+        int             out_fen_fd;
+        int             width;
+        int             height;
+        int             format;
+        unsigned int    paddr;
+        unsigned int    op;
+        unsigned int    reserve;
+    } fb_sync_request_t;
+
     private_handle_t const* buffer = reinterpret_cast<private_handle_t const*>(hnd);
-
-    //wait fence sync
-    //sync_wait(in_fence, 3000);
-    //close(in_fence);
-    //in_fence = -1;
-    //set sync request
-
     fb_sync_request_t sync_req;
-    memset(&sync_req,0,sizeof(fb_sync_request_t));
-    sync_req.xoffset=fbinfo->info.xoffset;
-    sync_req.yoffset= buffer->offset / fbinfo->finfo.line_length;
-    sync_req.in_fen_fd=in_fence;
-    //ALOGD( "req offset:%d\n",sync_req.yoffset);
+
+    memset(&sync_req, 0, sizeof(fb_sync_request_t));
+    sync_req.xoffset = fbinfo->info.xoffset;
+    sync_req.yoffset = buffer->offset / fbinfo->finfo.line_length;
+    // acquire fence.
+    sync_req.in_fen_fd = in_fence;
+
+    if (fbinfo->renderMode == 1) { // Direct composer mode.
+        sync_req.width = buffer->width;
+        sync_req.height = buffer->height;
+        sync_req.format = buffer->format;
+        sync_req.paddr = getIonPhyAddr(fbinfo, hnd);
+    } else if (fbinfo->renderMode == 2) { // GE2D composer mode.
+        sync_req.width = fbinfo->info.xres;
+        sync_req.height = fbinfo->info.yres;
+        sync_req.format = HAL_PIXEL_FORMAT_RGBA_8888;
+        unsigned int paddr = getIonPhyAddr(fbinfo, hnd);
+        if (0 != paddr)
+            sync_req.paddr = paddr + fbinfo->yOffset * fbinfo->finfo.line_length;
+    }
+    sync_req.op = fbinfo->op;
+    ALOGD( "req offset: %d, width: %d, height: %d, format: %d, addr: 0x%x, op: 0x%x\n",
+        sync_req.yoffset, sync_req.width, sync_req.height, sync_req.format, sync_req.paddr, sync_req.op);
     ioctl(fbinfo->fd, FBIOPUT_OSD_SYNC_ADD, &sync_req);
-     //ALOGD( "post offset:%d\n",buffer->offset/fbinfo->finfo.line_length);
-    //TODO:: need update with kernel change.
-    //fb_post_locked(fbinfo,hnd);
 
-    int out_fence = sync_req.out_fen_fd;
-    /*nsecs_t origin=systemTime(CLOCK_MONOTONIC);
-    ALOGD( "--sync wait: %d,begin:%lld\n",out_fence,origin);
-    sync_wait(out_fence, 3000);
-    close(out_fence);
-    nsecs_t diff=systemTime(CLOCK_MONOTONIC)-origin;
-    ALOGD( "++sync wait: %d,wait_delay:%lld\n",out_fence,diff);*/
-
-    return out_fence;
+    return sync_req.out_fen_fd;
 }
 
 int fb_post_locked(struct framebuffer_info_t* fbinfo, buffer_handle_t hnd)
