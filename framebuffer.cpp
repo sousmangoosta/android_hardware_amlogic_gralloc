@@ -524,7 +524,7 @@ int fb_post_with_fence_locked(
 	// acquire fence.
 	sync_req.in_fen_fd = in_fence;
 
-	ALOGD( "req offset: %d\n", sync_req.yoffset);
+	// ALOGD( "req offset: %d\n", sync_req.yoffset);
 	ioctl(fbinfo->fd, FBIOPUT_OSD_SYNC_ADD, &sync_req);
 
 	return sync_req.out_fen_fd;
@@ -599,8 +599,8 @@ int hwc_fb_post_with_fence_locked(
 			sync_req.paddr = paddr + fbinfo->yOffset * fbinfo->finfo.line_length;
 	}
 	sync_req.op = fbinfo->op;
-	ALOGD( "req offset: %d, width: %d, height: %d, format: %d, addr: 0x%x, op: 0x%x\n",
-		sync_req.yoffset, sync_req.width, sync_req.height, sync_req.format, sync_req.paddr, sync_req.op);
+	// ALOGD( "req offset: %d, width: %d, height: %d, format: %d, addr: 0x%x, op: 0x%x\n",
+		// sync_req.yoffset, sync_req.width, sync_req.height, sync_req.format, sync_req.paddr, sync_req.op);
 	ioctl(fbinfo->fd, FBIOPUT_OSD_SYNC_RENDER_ADD, &sync_req);
 
 	return sync_req.out_fen_fd;
