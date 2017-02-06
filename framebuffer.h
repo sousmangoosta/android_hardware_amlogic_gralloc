@@ -6,6 +6,12 @@
 struct private_handle_t;
 struct private_module_t;
 
+enum {
+    GLES_COMPOSE_MODE = 0,
+    DIRECT_COMPOSE_MODE = 1,
+    GE2D_COMPOSE_MODE = 2,
+};
+
 typedef struct framebuffer_info_t{
     // gralloc module.
     private_module_t *grallocModule;

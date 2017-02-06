@@ -585,12 +585,12 @@ int hwc_fb_post_with_fence_locked(
 	sync_req.yoffset = buffer->offset / fbinfo->finfo.line_length;
 	// acquire fence.
 	sync_req.in_fen_fd = in_fence;
-	if (fbinfo->renderMode == 1) { // Direct composer mode.
+	if (fbinfo->renderMode == DIRECT_COMPOSE_MODE) { // Direct composer mode.
 		sync_req.width = buffer->width;
 		sync_req.height = buffer->height;
 		sync_req.format = buffer->format;
 		sync_req.paddr = getIonPhyAddr(fbinfo, hnd);
-	} else if (fbinfo->renderMode == 2) { // GE2D composer mode.
+	} else if (fbinfo->renderMode == GE2D_COMPOSE_MODE) { // GE2D composer mode.
 		sync_req.width = fbinfo->info.xres;
 		sync_req.height = fbinfo->info.yres;
 		sync_req.format = HAL_PIXEL_FORMAT_RGBA_8888;
