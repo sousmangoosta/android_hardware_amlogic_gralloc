@@ -322,6 +322,7 @@ static int gralloc_lock_ycbcr(gralloc_module_t const* module,
 	size_t cStep;
 	switch (hnd->format) {
 		case HAL_PIXEL_FORMAT_YCrCb_420_SP: //this is NV21
+		case HAL_PIXEL_FORMAT_YCbCr_420_SP:
 		case HAL_PIXEL_FORMAT_YCbCr_420_888:
 			yStride = hnd->width;
 			cStride = hnd->width;

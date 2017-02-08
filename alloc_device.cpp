@@ -917,6 +917,7 @@ static int alloc_device_alloc(alloc_device_t* dev, int w, int h, int format, int
 				break;
 
 			case HAL_PIXEL_FORMAT_YCrCb_420_SP:
+			case HAL_PIXEL_FORMAT_YCbCr_420_SP:
 			case HAL_PIXEL_FORMAT_YCbCr_420_888:
 			case HAL_PIXEL_FORMAT_YV12:
 				// Mali subsystem prefers higher stride alignment values (128b) for YUV, but software components assume default of 16.

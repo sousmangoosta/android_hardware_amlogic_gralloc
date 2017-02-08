@@ -37,6 +37,7 @@
 
 #include "format_chooser.h"
 
+#define HAL_PIXEL_FORMAT_YCbCr_420_SP 0x100
 //#define MALI_ION  1
 
 #define GRALLOC_ARM_UMP_MODULE 0
