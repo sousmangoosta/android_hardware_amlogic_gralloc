@@ -49,8 +49,16 @@ int alloc_backend_alloc(alloc_device_t* dev, size_t size, int usage, buffer_hand
 
 #define ION_HEAP_SECURE_MASK 1
 
+	bool secureOrProtectedLayer = false;
+	if (usage & GRALLOC_USAGE_AML_SECURE)
+	{
+		secureOrProtectedLayer = true;
+		// usage &= ~GRALLOC_USAGE_AML_SECURE;
+	}
+
 	if (usage & GRALLOC_USAGE_PROTECTED)
 	{
+		secureOrProtectedLayer = true;
 		usage &= ~GRALLOC_USAGE_PROTECTED;
 	}
 	/* Select heap type based on usage hints */
@@ -169,6 +177,10 @@ int alloc_backend_alloc(alloc_device_t* dev, size_t size, int usage, buffer_hand
 		if (layerAllocContinousBuf)
 		{
 			hnd->flags |= private_handle_t::PRIV_FLAGS_CONTINUOUS_BUF;
+		}
+		if (secureOrProtectedLayer)
+		{
+			hnd->flags |= private_handle_t::PRIV_FLAGS_SECURE_PROTECTED;
 		}
 		return 0;
 	}
