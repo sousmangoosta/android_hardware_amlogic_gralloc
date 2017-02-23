@@ -579,8 +579,8 @@ int hwc_fb_post_with_fence_locked(
 	// acquire fence.
 	sync_req.in_fen_fd = in_fence;
 	sync_req.op = fbinfo->op;
-	// ALOGD( "req offset: %d, width: %d, height: %d, format: %d, shared_fd: %d, op: 0x%x\n",
-		// sync_req.yoffset, sync_req.width, sync_req.height, sync_req.format, sync_req.shared_fd, sync_req.op);
+	// ALOGD( "mode: %d, req offset: %d, width: %d, height: %d, format: %d, shared_fd: %d, op: 0x%x\n",
+		// fbinfo->renderMode, sync_req.yoffset, sync_req.width, sync_req.height, sync_req.format, sync_req.shared_fd, sync_req.op);
 	ioctl(fbinfo->fd, FBIOPUT_OSD_SYNC_RENDER_ADD, &sync_req);
 
 	return sync_req.out_fen_fd;
