@@ -53,7 +53,6 @@ int alloc_backend_alloc(alloc_device_t* dev, size_t size, int usage, buffer_hand
 	if (usage & GRALLOC_USAGE_AML_SECURE)
 	{
 		secureOrProtectedLayer = true;
-		// usage &= ~GRALLOC_USAGE_AML_SECURE;
 	}
 
 	if (usage & GRALLOC_USAGE_PROTECTED)
@@ -178,10 +177,13 @@ int alloc_backend_alloc(alloc_device_t* dev, size_t size, int usage, buffer_hand
 		{
 			hnd->flags |= private_handle_t::PRIV_FLAGS_CONTINUOUS_BUF;
 		}
+
+#ifdef GRALLOC_ENABLE_SECURE_LAYER
 		if (secureOrProtectedLayer)
 		{
 			hnd->flags |= private_handle_t::PRIV_FLAGS_SECURE_PROTECTED;
 		}
+#endif
 		return 0;
 	}
 	else
