@@ -50,10 +50,12 @@ int alloc_backend_alloc(alloc_device_t* dev, size_t size, int usage, buffer_hand
 #define ION_HEAP_SECURE_MASK 1
 
 	bool secureOrProtectedLayer = false;
+#ifdef GRALLOC_ENABLE_SECURE_LAYER
 	if (usage & GRALLOC_USAGE_AML_SECURE)
 	{
 		secureOrProtectedLayer = true;
 	}
+#endif
 
 	if (usage & GRALLOC_USAGE_PROTECTED)
 	{

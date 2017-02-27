@@ -52,9 +52,6 @@ struct meson_phys_data{
     unsigned int size;
 };
 
-// get ion physical address.
-uint32_t getIonPhyAddr(struct framebuffer_info_t* fbinfo, buffer_handle_t hnd);
-
 // Initialize the framebuffer (must keep module lock before calling
 int init_frame_buffer_locked(struct framebuffer_info_t* info);
 

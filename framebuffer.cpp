@@ -530,34 +530,6 @@ int fb_post_with_fence_locked(
 	return sync_req.out_fen_fd;
 }
 
-uint32_t getIonPhyAddr(struct framebuffer_info_t* fbinfo,buffer_handle_t hnd)
-{
-	private_handle_t const *pHandle = reinterpret_cast<private_handle_t const*> (hnd);
-	private_module_t *grallocModule = fbinfo->grallocModule;
-	int result = 0;
-	struct meson_phys_data phyData =
-	{
-		.handle = pHandle->share_fd,
-		.phys_addr = 0,
-		.size = 0,
-	};
-	struct ion_custom_data customData =
-	{
-		.cmd = ION_IOC_MESON_PHYS_ADDR,
-		.arg = (unsigned long)&phyData,
-	};
-
-	result = ioctl(grallocModule->ion_client, ION_IOC_CUSTOM, (unsigned long)&customData);
-
-	if (result < 0)
-	{
-		ALOGE("ion custom ioctl %x failed with code %d: %s\n",
-				ION_IOC_MESON_PHYS_ADDR, result, strerror(errno));
-	}
-
-	return phyData.phys_addr;
-}
-
 int hwc_fb_post_with_fence_locked(
 			struct framebuffer_info_t* fbinfo,
 			buffer_handle_t hnd,
