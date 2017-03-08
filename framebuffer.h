@@ -34,15 +34,29 @@ typedef struct framebuffer_info_t{
     float fps;
     int   flipFlags;
 
-    // Composer mode.
-    int   renderMode;
-
     // GE2D composer mode used only.
     int   yOffset;
-
-    // osd blank option.
-    unsigned int op;
 }framebuffer_info_t;
+
+typedef struct hwc_fb_sync_request_t{
+    unsigned int    xoffset;
+    unsigned int    yoffset;
+    int             in_fen_fd;
+    int             out_fen_fd;
+    int             width;
+    int             height;
+    int             format;
+    int             shared_fd;
+    unsigned int    op;
+    unsigned int    type; /*direct render or ge2d*/
+    unsigned int    dst_x;
+    unsigned int    dst_y;
+    unsigned int    dst_w;
+    unsigned int    dst_h;
+    int             byte_stride;
+    int             stride;
+    unsigned int    reserve;
+} hwc_fb_sync_request_t;
 
 #define ION_IOC_MESON_PHYS_ADDR 8
 
@@ -61,8 +75,14 @@ int update_cursor_buffer_locked(struct framebuffer_info_t* cbinfo, int xres, int
 #endif
 
 int fb_post_locked(struct framebuffer_info_t* fbinfo,buffer_handle_t buffer);
-int fb_post_with_fence_locked(struct framebuffer_info_t* fbinfo,buffer_handle_t hnd,int in_fence);
-int hwc_fb_post_with_fence_locked(struct framebuffer_info_t* fbinfo,buffer_handle_t hnd,int in_fence);
+int fb_post_with_fence_locked(
+        struct framebuffer_info_t* fbinfo,
+        buffer_handle_t hnd,
+        int in_fence);
+int hwc_fb_post_with_fence_locked(
+        struct framebuffer_info_t* fbinfo,
+        struct hwc_fb_sync_request_t* sync_req,
+        buffer_handle_t hnd);
 int getOsdIdx(int display_type);
 int bits_per_pixel();
 

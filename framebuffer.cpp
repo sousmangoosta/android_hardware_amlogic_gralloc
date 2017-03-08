@@ -532,58 +532,58 @@ int fb_post_with_fence_locked(
 
 int hwc_fb_post_with_fence_locked(
 			struct framebuffer_info_t* fbinfo,
-			buffer_handle_t hnd,
-			int in_fence)
+			struct hwc_fb_sync_request_t* sync_req,
+			buffer_handle_t hnd)
 {
 #define FBIOPUT_OSD_SYNC_RENDER_ADD	0x4519
-	typedef struct {
-		unsigned int    xoffset;
-		unsigned int    yoffset;
-		int             in_fen_fd;
-		int             out_fen_fd;
-		int             width;
-		int             height;
-		int             format;
-		int             shared_fd;
-		unsigned int    op;
-		unsigned int    reserve;
-	} fb_sync_request_t;
-
 	private_handle_t const* buffer = reinterpret_cast<private_handle_t const*>(hnd);
-	fb_sync_request_t sync_req;
 
-	memset(&sync_req, 0, sizeof(fb_sync_request_t));
-	sync_req.shared_fd = -1;
-	switch (fbinfo->renderMode) {
+	sync_req->shared_fd = -1;
+	switch (sync_req->type) {
 		case GLES_COMPOSE_MODE:
-			sync_req.xoffset = fbinfo->info.xoffset;
-			sync_req.yoffset = buffer->offset / fbinfo->finfo.line_length;
+			sync_req->xoffset = fbinfo->info.xoffset;
+			sync_req->yoffset = buffer->offset / fbinfo->finfo.line_length;
+			ALOGD( "GLES, req offset: %d",
+						sync_req->yoffset);
 		break;
 		case DIRECT_COMPOSE_MODE:
-			sync_req.width = buffer->width;
-			sync_req.height = buffer->height;
-			sync_req.format = buffer->format;
-			sync_req.shared_fd = buffer->share_fd;
+			sync_req->format = buffer->format;
+			sync_req->shared_fd = buffer->share_fd;
+			sync_req->byte_stride = buffer->byte_stride;
+			sync_req->stride = buffer->stride;
+			ALOGD( "Direct, src: (%d, %d, %d, %d), dst: (%d, %d, %d, %d)",
+						sync_req->xoffset,
+						sync_req->yoffset,
+						sync_req->width,
+						sync_req->height,
+						sync_req->dst_x,
+						sync_req->dst_y,
+						sync_req->dst_w,
+						sync_req->dst_h);
 		break;
 		case GE2D_COMPOSE_MODE:
-			sync_req.width = fbinfo->info.xres;
-			sync_req.height = fbinfo->info.yres;
-			sync_req.format = HAL_PIXEL_FORMAT_RGBA_8888;
-			sync_req.yoffset = fbinfo->yOffset;
-			sync_req.shared_fd = buffer->share_fd;
+			sync_req->width = fbinfo->info.xres;
+			sync_req->height = fbinfo->info.yres;
+			sync_req->format = HAL_PIXEL_FORMAT_RGBA_8888;
+			sync_req->yoffset = fbinfo->yOffset;
+			sync_req->shared_fd = buffer->share_fd;
+			ALOGD( "GE2D, width: %d, height: %d",
+						sync_req->width,
+						sync_req->height);
 		break;
 		default:
 			ALOGE("unknown compose mode!!!");
 		break;
 	}
-	// acquire fence.
-	sync_req.in_fen_fd = in_fence;
-	sync_req.op = fbinfo->op;
-	// ALOGD( "mode: %d, req offset: %d, width: %d, height: %d, format: %d, shared_fd: %d, op: 0x%x\n",
-		// fbinfo->renderMode, sync_req.yoffset, sync_req.width, sync_req.height, sync_req.format, sync_req.shared_fd, sync_req.op);
-	ioctl(fbinfo->fd, FBIOPUT_OSD_SYNC_RENDER_ADD, &sync_req);
+	ALOGD( "format: %d, shared_fd: %d, op: 0x%x, byte_stride: %d, pixel_stride: %d",
+				sync_req->format,
+				sync_req->shared_fd,
+				sync_req->op,
+				sync_req->byte_stride,
+				sync_req->stride);
+	ioctl(fbinfo->fd, FBIOPUT_OSD_SYNC_RENDER_ADD, sync_req);
 
-	return sync_req.out_fen_fd;
+	return sync_req->out_fen_fd;
 }
 
 int fb_post_locked(struct framebuffer_info_t* fbinfo, buffer_handle_t hnd)
