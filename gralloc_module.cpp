@@ -303,12 +303,14 @@ static int gralloc_lock_ycbcr(gralloc_module_t const* module,
 	bool hw_cam_write = (usage & GRALLOC_USAGE_HW_CAMERA_WRITE);
 	bool sw_read_allowed = (0 != (hnd->usage & GRALLOC_USAGE_SW_READ_MASK));
 
+#if 0
 	if ( (!hw_cam_write && !sw_read) ||
 		(sw_read && !sw_read_allowed) ) {
 		AERR("gralloc_lock_ycbcr usage mismatch usage:0x%x cb->usage:0x%x\n",
 		usage, hnd->usage);
 		return -EINVAL;
 	}
+#endif
 
 	uint8_t *cpu_addr = NULL;
 	cpu_addr = (uint8_t *)hnd->base;
