@@ -32,6 +32,10 @@
 #include "gralloc_helper.h"
 #include "framebuffer_device.h"
 
+#if PLATFORM_SDK_VERSION >= 24
+#include "gralloc_usage_ext.h"
+#endif
+
 #include "alloc_device_allocator_specific.h"
 #if MALI_AFBC_GRALLOC == 1
 #include "gralloc_buffer_priv.h"

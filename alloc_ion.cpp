@@ -31,9 +31,12 @@
 #include "gralloc_priv.h"
 #include "gralloc_helper.h"
 #include "framebuffer_device.h"
-
 #include <linux/ion.h>
 #include <ion/ion.h>
+
+#if PLATFORM_SDK_VERSION >= 24
+#include "gralloc_usage_ext.h"
+#endif
 
 int alloc_backend_alloc(alloc_device_t* dev, size_t size, int usage, buffer_handle_t* pHandle)
 {
