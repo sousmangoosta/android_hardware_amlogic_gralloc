@@ -12,6 +12,10 @@ enum {
     GE2D_COMPOSE_MODE = 2,
 };
 
+enum {
+    OSD_BLANK_OP_BIT = 0x00000001,
+};
+
 typedef struct framebuffer_info_t{
     // gralloc module.
     private_module_t *grallocModule;
