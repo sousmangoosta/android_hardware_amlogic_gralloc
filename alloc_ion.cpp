@@ -103,6 +103,11 @@ int alloc_backend_alloc(alloc_device_t* dev, size_t size, int usage, buffer_hand
 			ret = ion_alloc(m->ion_client, size, 0,
 							1<<ION_HEAP_TYPE_CUSTOM, ion_flags, &ion_hnd);
 		}
+#ifdef GRALLOC_APP_ALLOC_CONTINUOUS_BUF
+		if (ret == 0) {
+			layerAllocContinousBuf = true;
+		}
+#endif
 	}
 #ifdef GRALLOC_APP_ALLOC_CONTINUOUS_BUF
 	else if (usage & GRALLOC_USAGE_HW_COMPOSER
