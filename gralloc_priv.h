@@ -79,6 +79,7 @@ struct fb_dmabuf_export
 	__u32 flags;
 };
 #define FBIOGET_DMABUF	_IOR('F', 0x21, struct fb_dmabuf_export)
+#define FBIOGET_OSD_DMABUF               0x46fc
 #endif
 
 /* the max string size of GRALLOC_HARDWARE_GPU0 & GRALLOC_HARDWARE_FB0

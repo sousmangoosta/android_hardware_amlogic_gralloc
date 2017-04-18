@@ -230,13 +230,23 @@ int alloc_backend_alloc_framebuffer(private_module_t* m, private_handle_t* hnd, 
 	}
 	else
 	{
-		AINF("FBIOGET_DMABUF ioctl failed(%d). See gralloc_priv.h and the integration manual for vendor framebuffer integration", res);
+		AINF("FBIOGET_DMABUF ioctl failed(%d). try FBIOGET_OSD_DMABUF", res);
+		res = ioctl( m_fb->framebuffer->fd, FBIOGET_OSD_DMABUF, &fb_dma_buf );
+		if (res == 0)
+		{
+			hnd->share_fd = fb_dma_buf.fd;
+			return 0;
+		}
+		else
+		{
+			AINF("FBIOGET_OSD_DMABUF ioctl failed(%d). See gralloc_priv.h and the integration manual for vendor framebuffer integration", res);
 #if MALI_ARCHITECTURE_UTGARD
-		/* On Utgard we do not have a strict requirement of DMA-BUF integration */
-		return 0;
+			/* On Utgard we do not have a strict requirement of DMA-BUF integration */
+			return 0;
 #else
-		return -1;
+			return -1;
 #endif
+		}
 	}
 #else
 	return 0;
