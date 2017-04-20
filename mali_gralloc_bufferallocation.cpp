@@ -34,6 +34,8 @@
 #include "gralloc_buffer_priv.h"
 #include "mali_gralloc_bufferdescriptor.h"
 #include "mali_gralloc_debug.h"
+#include "gralloc_usage_ext.h"
+#include <utils/CallStack.h>
 
 #define AFBC_PIXELS_PER_BLOCK 16
 #define AFBC_HEADER_BUFFER_BYTES_PER_BLOCKENTRY 16
@@ -57,6 +59,9 @@
 
 // Default YUV stride aligment in Android
 #define YUV_ANDROID_PLANE_ALIGN 16
+
+#define OMX_VIDEOLAYER_ALLOC_BUFFER_WIDTH     192
+#define OMX_VIDEOLAYER_ALLOC_BUFFER_HEIGHT    90
 
 /*
  * Type of allocation
@@ -890,6 +895,7 @@ int mali_gralloc_buffer_allocate(mali_gralloc_module *m, const gralloc_buffer_de
 	uint32_t i = 0;
 	int err;
 	int yv12_align = YUV_MALI_PLANE_ALIGN;
+	int buffer_width;
 
 	for (i = 0; i < numDescriptors; i++)
 	{
@@ -898,9 +904,17 @@ int mali_gralloc_buffer_allocate(mali_gralloc_module *m, const gralloc_buffer_de
 		/* Some formats require an internal width and height that may be used by
 		 * consumers/producers.
 		 */
+		buffer_width = bufDescriptor->width;
+		usage = bufDescriptor->producer_usage | bufDescriptor->consumer_usage;
+#if PLATFORM_SDK_VERSION >= 24
+		if (usage & GRALLOC_USAGE_AML_OMX_OVERLAY)
+		{
+			bufDescriptor->width	= OMX_VIDEOLAYER_ALLOC_BUFFER_WIDTH;
+			bufDescriptor->height   = OMX_VIDEOLAYER_ALLOC_BUFFER_HEIGHT;
+		}
+#endif
 		bufDescriptor->internalWidth = bufDescriptor->width;
 		bufDescriptor->internalHeight = bufDescriptor->height;
-		usage = bufDescriptor->producer_usage | bufDescriptor->consumer_usage;
 
 		bufDescriptor->internal_format = mali_gralloc_select_format(
 		    bufDescriptor->hal_format, bufDescriptor->format_type, usage, bufDescriptor->width * bufDescriptor->height);
@@ -989,6 +1003,12 @@ int mali_gralloc_buffer_allocate(mali_gralloc_module *m, const gralloc_buffer_de
 			{
 				return -EINVAL;
 			}
+#if PLATFORM_SDK_VERSION >= 24
+			if (usage & GRALLOC_USAGE_AML_OMX_OVERLAY)
+			{
+				bufDescriptor->pixel_stride = buffer_width;
+			}
+#endif
 
 			break;
 		}
