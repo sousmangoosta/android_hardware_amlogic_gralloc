@@ -576,14 +576,16 @@ int hwc_fb_post_with_fence_locked(
 			break;
 		}
 	} else {
-		ALOGD("FB post blank without buffer.");
+		//ALOGD("FB post blank without buffer.");
 	}
+	/*
 	ALOGD( "format: %d, shared_fd: %d, op: 0x%x, byte_stride: %d, pixel_stride: %d",
 				sync_req->format,
 				sync_req->shared_fd,
 				sync_req->op,
 				sync_req->byte_stride,
 				sync_req->stride);
+	*/
 	ioctl(fbinfo->fd, FBIOPUT_OSD_SYNC_RENDER_ADD, sync_req);
 	return sync_req->out_fen_fd;
 }
