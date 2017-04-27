@@ -62,14 +62,6 @@ typedef struct hwc_fb_sync_request_t{
     unsigned int    reserve;
 } hwc_fb_sync_request_t;
 
-#define ION_IOC_MESON_PHYS_ADDR 8
-
-struct meson_phys_data{
-    int handle;
-    unsigned int phys_addr;
-    unsigned int size;
-};
-
 // Initialize the framebuffer (must keep module lock before calling
 int init_frame_buffer_locked(struct framebuffer_info_t* info);
 
