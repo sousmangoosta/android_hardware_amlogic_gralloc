@@ -46,6 +46,9 @@
 #define AFBC_HEADER_BUFFER_BYTES_PER_BLOCKENTRY  16
 #define AFBC_WIDEBLK_WIDTH_ALIGN                 32
 
+#define OMX_VIDEOLAYER_ALLOC_BUFFER_WIDTH     192
+#define OMX_VIDEOLAYER_ALLOC_BUFFER_HEIGHT    90
+
 static int gralloc_alloc_framebuffer_locked(alloc_device_t* dev, size_t size, int usage, buffer_handle_t* pHandle, int* stride, int* byte_stride)
 {
 	private_module_t* private_t = reinterpret_cast<private_module_t*>(dev->common.module);
@@ -814,6 +817,7 @@ static int alloc_device_alloc(alloc_device_t* dev, int w, int h, int format, int
 	AllocType type = UNCOMPRESSED;
 	bool alloc_for_extended_yuv = false, alloc_for_arm_afbc_yuv = false;
 	int internalWidth,internalHeight;
+	int buffer_width = w;
 
 #if defined(GRALLOC_FB_SWAP_RED_BLUE)
 	/* match the framebuffer format */
@@ -864,6 +868,13 @@ static int alloc_device_alloc(alloc_device_t* dev, int w, int h, int format, int
 	/* Some formats require an internal width and height that may be used by
 	 * consumers/producers.
 	 */
+#if PLATFORM_SDK_VERSION >= 24
+	if (usage & GRALLOC_USAGE_AML_OMX_OVERLAY)
+	{
+		w = OMX_VIDEOLAYER_ALLOC_BUFFER_WIDTH;
+		h = OMX_VIDEOLAYER_ALLOC_BUFFER_HEIGHT;
+	}
+#endif
 	internalWidth = w;
 	internalHeight = h;
 
@@ -936,6 +947,12 @@ static int alloc_device_alloc(alloc_device_t* dev, int w, int h, int format, int
 				{
 					return -EINVAL;
 				}
+#if PLATFORM_SDK_VERSION >= 24
+				if (usage & GRALLOC_USAGE_AML_OMX_OVERLAY)
+				{
+					pixel_stride = buffer_width;
+				}
+#endif
 				break;
 
 				/*
