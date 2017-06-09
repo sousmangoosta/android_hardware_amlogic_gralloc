@@ -524,7 +524,7 @@ int fb_post_with_fence_locked(
 	// acquire fence.
 	sync_req.in_fen_fd = in_fence;
 
-	// ALOGD( "req offset: %d\n", sync_req.yoffset);
+	ALOGV( "old post: req offset: %d\n", sync_req.yoffset);
 	ioctl(fbinfo->fd, FBIOPUT_OSD_SYNC_ADD, &sync_req);
 
 	return sync_req.out_fen_fd;
@@ -544,14 +544,14 @@ int hwc_fb_post_with_fence_locked(
 			case GLES_COMPOSE_MODE:
 				sync_req->xoffset = fbinfo->info.xoffset;
 				sync_req->yoffset = buffer->offset / fbinfo->finfo.line_length;
-				ALOGD( "GLES, req offset: %d",sync_req->yoffset);
+				ALOGV( "hwc GLES, req offset: %d",sync_req->yoffset);
 			break;
 			case DIRECT_COMPOSE_MODE:
 				sync_req->format = buffer->format;
 				sync_req->shared_fd = buffer->share_fd;
 				sync_req->byte_stride = buffer->byte_stride;
 				sync_req->stride = buffer->stride;
-				ALOGD( "Direct, src: (%d, %d, %d, %d), dst: (%d, %d, %d, %d)",
+				ALOGV( "hwc Direct, src: (%d, %d, %d, %d), dst: (%d, %d, %d, %d)",
 							sync_req->xoffset,
 							sync_req->yoffset,
 							sync_req->width,
@@ -567,25 +567,23 @@ int hwc_fb_post_with_fence_locked(
 				sync_req->format = HAL_PIXEL_FORMAT_RGBA_8888;
 				sync_req->yoffset = fbinfo->yOffset;
 				sync_req->shared_fd = buffer->share_fd;
-				ALOGD( "GE2D, width: %d, height: %d",
+				ALOGV( "hwc GE2D, width: %d, height: %d",
 							sync_req->width,
 							sync_req->height);
 			break;
 			default:
-				ALOGE("unknown compose mode!!!");
+				ALOGE("hwc unknown compose mode!!!");
 			break;
 		}
 	} else {
-		//ALOGD("FB post blank without buffer.");
+		ALOGV("hwc FB post blank without buffer.");
 	}
-	/*
-	ALOGD( "format: %d, shared_fd: %d, op: 0x%x, byte_stride: %d, pixel_stride: %d",
+	ALOGV( "hwc format: %d, shared_fd: %d, op: 0x%x, byte_stride: %d, pixel_stride: %d",
 				sync_req->format,
 				sync_req->shared_fd,
 				sync_req->op,
 				sync_req->byte_stride,
 				sync_req->stride);
-	*/
 	ioctl(fbinfo->fd, FBIOPUT_OSD_SYNC_RENDER_ADD, sync_req);
 	return sync_req->out_fen_fd;
 }
