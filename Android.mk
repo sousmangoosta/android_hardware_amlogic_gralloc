@@ -56,6 +56,9 @@ LOCAL_CFLAGS += -DPLATFORM_SDK_VERSION=$(PLATFORM_SDK_VERSION)
 LOCAL_PRELINK_MODULE := false
 LOCAL_SRC_FILES := framebuffer.cpp
 LOCAL_MODULE := libfbcnf
+ifeq ($(shell test $(PLATFORM_SDK_VERSION) -ge 26 && echo OK),OK)
+	LOCAL_PROPRIETARY_MODULE := true
+endif
 LOCAL_SHARED_LIBRARIES := liblog libcutils libutils
 LOCAL_C_INCLUDES += system/core/libion/include/ \
 		system/core/libion/kernel-headers
@@ -180,7 +183,9 @@ LOCAL_MODULE := gralloc.default
 else
 LOCAL_MODULE := gralloc.amlogic
 endif
-
+ifeq ($(shell test $(PLATFORM_SDK_VERSION) -ge 26 && echo OK),OK)
+LOCAL_PROPRIETARY_MODULE := true
+endif
 LOCAL_MODULE_TAGS := optional
 LOCAL_MULTILIB := both
 
