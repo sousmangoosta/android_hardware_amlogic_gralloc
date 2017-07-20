@@ -326,16 +326,16 @@ static int gralloc_lock_ycbcr(gralloc_module_t const* module,
 		case HAL_PIXEL_FORMAT_YCrCb_420_SP: //this is NV21
 		case HAL_PIXEL_FORMAT_YCbCr_420_SP:
 		case HAL_PIXEL_FORMAT_YCbCr_420_888:
-			yStride = hnd->width;
-			cStride = hnd->width;
+			yStride = GRALLOC_ALIGN(hnd->width, YUV_MALI_PLANE_ALIGN);
+			cStride = GRALLOC_ALIGN(hnd->width, YUV_MALI_PLANE_ALIGN);
 			yOffset = 0;
 			vOffset = yStride * hnd->height;
 			uOffset = vOffset + 1;
 			cStep = 2;
 			break;
 		case HAL_PIXEL_FORMAT_YV12:
-			yStride = GRALLOC_ALIGN(hnd->width, 16);
-			cStride = GRALLOC_ALIGN(yStride / 2, 16);
+			yStride = GRALLOC_ALIGN(hnd->width, YUV_ANDROID_PLANE_ALIGN);
+			cStride = GRALLOC_ALIGN(yStride / 2, YUV_ANDROID_PLANE_ALIGN);
 			yOffset = 0;
 			vOffset = yStride * hnd->height;
 			uOffset = vOffset + cStride * hnd->height / 2;

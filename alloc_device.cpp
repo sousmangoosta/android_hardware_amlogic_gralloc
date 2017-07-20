@@ -395,7 +395,7 @@ static bool get_yuv_420_888_stride_and_size(int width, int height, int* pixel_st
 		return false;
 	}
 
-	luma_pixel_stride = GRALLOC_ALIGN(width, 16);
+	luma_pixel_stride = GRALLOC_ALIGN(width, YUV_MALI_PLANE_ALIGN);
 
 	if (size != NULL)
 	{
@@ -934,6 +934,18 @@ static int alloc_device_alloc(alloc_device_t* dev, int w, int h, int format, int
 			case HAL_PIXEL_FORMAT_YCrCb_420_SP:
 			case HAL_PIXEL_FORMAT_YCbCr_420_SP:
 			case HAL_PIXEL_FORMAT_YCbCr_420_888:
+				if (!get_yv12_stride_and_size(GRALLOC_ALIGN(w, 2), GRALLOC_ALIGN(h, 2), &pixel_stride, &byte_stride, &size, type, &internalHeight, yv12_align))
+				{
+					return -EINVAL;
+				}
+#if PLATFORM_SDK_VERSION >= 24
+				if (usage & GRALLOC_USAGE_AML_OMX_OVERLAY)
+				{
+					pixel_stride = buffer_width;
+				}
+#endif
+				break;
+
 			case HAL_PIXEL_FORMAT_YV12:
 				// Mali subsystem prefers higher stride alignment values (128b) for YUV, but software components assume default of 16.
 				// We only need to care about YV12 as it's the only, implicit, HAL YUV format in Android.
