@@ -117,8 +117,13 @@ int alloc_backend_alloc(alloc_device_t* dev, size_t size, int usage, buffer_hand
 		ret = ion_alloc(m->ion_client, size, 0,
 						1<<ION_HEAP_TYPE_CHUNK, ion_flags, &ion_hnd);
 		if (ret != 0) {
+			ALOGV("(%d) Failed to alloc ion chunk mem, alloc from ion cma buffer.", ret);
+			ret = ion_alloc(m->ion_client, size, 0,
+						1<<ION_HEAP_TYPE_DMA, ion_flags, &ion_hnd);
+		}
+		if (ret != 0) {
 			layerAllocContinousBuf = false;
-			ALOGD("(%d) Failed to alloc ion chunk mem, alloc from system ion buffer.", ret);
+			ALOGD("(%d) Failed to alloc ion cma mem, alloc from system ion buffer.", ret);
 			ret = ion_alloc(m->ion_client, size, 0, heap_mask,
 										ion_flags, &ion_hnd);
 		}
