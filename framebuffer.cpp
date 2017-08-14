@@ -140,6 +140,19 @@ int update_cursor_buffer_locked(struct framebuffer_info_t* cbinfo, int xres, int
 	info.xoffset = info.yoffset = 0;
 	info.bits_per_pixel = 32;
 
+	/*
+	* Explicitly request 8/8/8/8
+	*/
+	info.bits_per_pixel = 32;
+	info.red.offset     = 0;
+	info.red.length     = 8;
+	info.green.offset   = 8;
+	info.green.length   = 8;
+	info.blue.offset    = 16;
+	info.blue.length    = 8;
+	info.transp.offset  = 24;
+	info.transp.length  = 8;
+
 	info.xres_virtual = info.xres = xres;
 	info.yres_virtual = info.yres = yres;
 
@@ -244,19 +257,6 @@ int init_cursor_buffer_locked(struct framebuffer_info_t* cbinfo)
 
 	info.xoffset = info.yoffset = 0;
 	info.bits_per_pixel = 32;
-
-	/*
-	* Explicitly request 8/8/8/8
-	*/
-	info.bits_per_pixel = 32;
-	info.red.offset     = 0;
-	info.red.length     = 8;
-	info.green.offset   = 8;
-	info.green.length   = 8;
-	info.blue.offset    = 16;
-	info.blue.length    = 8;
-	info.transp.offset  = 24;
-	info.transp.length  = 8;
 
 	if (ioctl(fd, FBIOPUT_VSCREENINFO, &info) == -1)
 	{
