@@ -97,11 +97,18 @@ int alloc_backend_alloc(alloc_device_t* dev, size_t size, int usage, buffer_hand
 	if (usage & GRALLOC_USAGE_AML_DMA_BUFFER) //alloc from carveout heap.
 	{
 		ret = ion_alloc(m->ion_client, size, 0,
-						ION_HEAP_CARVEOUT_MASK, ion_flags, &ion_hnd);
+#if PLATFORM_SDK_VERSION < 26
+						ION_HEAP_CARVEOUT_MASK,
+#else
+						ION_HEAP_TYPE_DMA_MASK,
+#endif
+						ion_flags, &ion_hnd);
 		if (ret != 0)
 		{
 			ret = ion_alloc(m->ion_client, size, 0,
 							1<<ION_HEAP_TYPE_CUSTOM, ion_flags, &ion_hnd);
+			ALOGE("omx alloc from custom%d, errno=%d\n", ret, errno);
+
 		}
 #ifdef GRALLOC_APP_ALLOC_CONTINUOUS_BUF
 		if (ret == 0) {
