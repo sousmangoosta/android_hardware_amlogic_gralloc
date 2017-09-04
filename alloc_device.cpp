@@ -1061,7 +1061,7 @@ static int alloc_device_alloc(alloc_device_t* dev, int w, int h, int format, int
 	}
 
 	int err;
-#if DISABLE_FRAMEBUFFER_HAL != 1
+#if DISABLE_FRAMEBUFFER_HAL != 1 && GRALLOC_ALLOC_FB_FROM_ION != 1
 	if (usage & GRALLOC_USAGE_HW_FB)
 	{
 		err = gralloc_alloc_framebuffer(dev, size, usage, pHandle, &pixel_stride, &byte_stride);

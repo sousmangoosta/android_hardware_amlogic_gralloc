@@ -116,6 +116,13 @@ int alloc_backend_alloc(alloc_device_t* dev, size_t size, int usage, buffer_hand
 		}
 #endif
 	}
+#if GRALLOC_ALLOC_FB_FROM_ION == 1
+	else if (usage & GRALLOC_USAGE_HW_FB) {
+		ALOGE("alloc framebuffer %d", size);
+		ret = ion_alloc(m->ion_client, size, 0, 1<<ION_HEAP_TYPE_DMA,
+									ion_flags, &ion_hnd);
+	}
+#endif
 #ifdef GRALLOC_APP_ALLOC_CONTINUOUS_BUF
 	else if (usage & GRALLOC_USAGE_HW_COMPOSER
 		&& !(usage & GRALLOC_USAGE_AML_VIDEO_OVERLAY

@@ -555,10 +555,19 @@ int hwc_fb_post_with_fence_locked(
 		private_handle_t const* buffer = reinterpret_cast<private_handle_t const*>(hnd);
 		switch (sync_req->type) {
 			case GLES_COMPOSE_MODE:
+			#if PLATFORM_SDK_VERSION >= 26
+				ALOGD("gles pass to direct compose mode.");
+				sync_req->type = DIRECT_COMPOSE_MODE;
+				sync_req->xoffset = sync_req->dst_x = 0;
+				sync_req->yoffset = sync_req->dst_y = 0;
+				sync_req->width = sync_req->dst_w = buffer->width;
+				sync_req->height = sync_req->dst_h = buffer->height;
+			#else
 				sync_req->xoffset = fbinfo->info.xoffset;
 				sync_req->yoffset = buffer->offset / fbinfo->finfo.line_length;
 				ALOGV( "hwc GLES, req offset: %d",sync_req->yoffset);
 			break;
+			#endif
 			case DIRECT_COMPOSE_MODE:
 				sync_req->format = buffer->format;
 				sync_req->shared_fd = buffer->share_fd;
