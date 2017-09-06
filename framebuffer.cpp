@@ -556,7 +556,7 @@ int hwc_fb_post_with_fence_locked(
 		switch (sync_req->type) {
 			case GLES_COMPOSE_MODE:
 			#if PLATFORM_SDK_VERSION >= 26
-				ALOGD("gles pass to direct compose mode.");
+				ALOGV("gles pass to direct compose mode.");
 				sync_req->type = DIRECT_COMPOSE_MODE;
 				sync_req->xoffset = sync_req->dst_x = 0;
 				sync_req->yoffset = sync_req->dst_y = 0;
@@ -565,7 +565,7 @@ int hwc_fb_post_with_fence_locked(
 			#else
 				sync_req->xoffset = fbinfo->info.xoffset;
 				sync_req->yoffset = buffer->offset / fbinfo->finfo.line_length;
-				ALOGV( "hwc GLES, req offset: %d",sync_req->yoffset);
+				ALOGV( "GLES, req offset: %d",sync_req->yoffset);
 			break;
 			#endif
 			case DIRECT_COMPOSE_MODE:
@@ -573,7 +573,7 @@ int hwc_fb_post_with_fence_locked(
 				sync_req->shared_fd = buffer->share_fd;
 				sync_req->byte_stride = buffer->byte_stride;
 				sync_req->stride = buffer->stride;
-				ALOGV( "hwc Direct, src: (%d, %d, %d, %d), dst: (%d, %d, %d, %d)",
+				ALOGV( "Direct, src: (%d, %d, %d, %d), dst: (%d, %d, %d, %d)",
 							sync_req->xoffset,
 							sync_req->yoffset,
 							sync_req->width,
@@ -589,7 +589,7 @@ int hwc_fb_post_with_fence_locked(
 				sync_req->format = HAL_PIXEL_FORMAT_RGBA_8888;
 				sync_req->yoffset = fbinfo->yOffset;
 				sync_req->shared_fd = buffer->share_fd;
-				ALOGV( "hwc GE2D, width: %d, height: %d",
+				ALOGV( "GE2D, width: %d, height: %d",
 							sync_req->width,
 							sync_req->height);
 			break;
