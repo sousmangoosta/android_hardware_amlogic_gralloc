@@ -99,14 +99,12 @@ int alloc_backend_alloc(alloc_device_t* dev, size_t size, int usage, buffer_hand
 
 	if (usage & GRALLOC_USAGE_AML_DMA_BUFFER) //alloc from carveout heap.
 	{
-		ret = ion_alloc(m->ion_client, size, 0,
 #if PLATFORM_SDK_VERSION < 26
+		ret = ion_alloc(m->ion_client, size, 0,
 						ION_HEAP_CARVEOUT_MASK,
-#else
-						ION_HEAP_TYPE_DMA_MASK,
-#endif
 						ion_flags, &ion_hnd);
 		if (ret != 0)
+#endif
 		{
 			ret = ion_alloc(m->ion_client, size, 0,
 							1<<ION_HEAP_TYPE_CUSTOM, ion_flags, &ion_hnd);
