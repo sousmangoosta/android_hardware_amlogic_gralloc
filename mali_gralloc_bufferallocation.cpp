@@ -53,7 +53,7 @@
 
 // This value is platform specific and should be set according to hardware YUV planes restrictions.
 // Please note that EGL winsys platform config file needs to use the same value when importing buffers.
-#define YUV_MALI_PLANE_ALIGN 128
+#define YUV_MALI_PLANE_ALIGN 32
 
 // Default YUV stride aligment in Android
 #define YUV_ANDROID_PLANE_ALIGN 16
@@ -889,6 +889,7 @@ int mali_gralloc_buffer_allocate(mali_gralloc_module *m, const gralloc_buffer_de
 	uint64_t usage;
 	uint32_t i = 0;
 	int err;
+	int yv12_align = YUV_MALI_PLANE_ALIGN;
 
 	for (i = 0; i < numDescriptors; i++)
 	{
@@ -965,21 +966,23 @@ int mali_gralloc_buffer_allocate(mali_gralloc_module *m, const gralloc_buffer_de
 			                        &bufDescriptor->byte_stride, &bufDescriptor->size, alloc_type);
 			break;
 
-		case HAL_PIXEL_FORMAT_YCrCb_420_SP:
 		case MALI_GRALLOC_FORMAT_INTERNAL_YV12:
-		case MALI_GRALLOC_FORMAT_INTERNAL_NV12:
-		case MALI_GRALLOC_FORMAT_INTERNAL_NV21:
-		{
 			/* Mali subsystem prefers higher stride alignment values (128 bytes) for YUV, but software components assume
 			 * default of 16. We only need to care about YV12 as it's the only, implicit, HAL YUV format in Android.
 			 */
-			int yv12_align = YUV_MALI_PLANE_ALIGN;
 
 			if (usage & (GRALLOC_USAGE_SW_READ_MASK | GRALLOC_USAGE_SW_WRITE_MASK))
 			{
 				yv12_align = YUV_ANDROID_PLANE_ALIGN;
 			}
+            /*
+             * fallthrough
+             */
 
+		case HAL_PIXEL_FORMAT_YCrCb_420_SP:
+		case MALI_GRALLOC_FORMAT_INTERNAL_NV12:
+		case MALI_GRALLOC_FORMAT_INTERNAL_NV21:
+		{
 			if (!get_yv12_stride_and_size(bufDescriptor->width, bufDescriptor->height, &bufDescriptor->pixel_stride,
 			                              &bufDescriptor->byte_stride, &bufDescriptor->size, alloc_type,
 			                              &bufDescriptor->internalHeight, yv12_align))

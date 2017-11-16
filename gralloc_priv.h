@@ -64,5 +64,8 @@
  */
 #include "mali_gralloc_private_interface.h"
 #endif
+#ifndef HAL_PIXEL_FORMAT_YCbCr_420_SP
+#define HAL_PIXEL_FORMAT_YCbCr_420_SP 0x100
+#endif
 
 #endif /* GRALLOC_PRIV_H_ */

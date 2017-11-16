@@ -49,7 +49,7 @@ MALI_DISPLAY_VERSION?=0
 # Gralloc1 support
 GRALLOC_USE_GRALLOC1_API?=1
 # Use ION DMA heap for all allocations. Default is system heap.
-GRALLOC_USE_ION_DMA_HEAP?=0
+GRALLOC_USE_ION_DMA_HEAP?=1
 # Use ION Compound heap for all allocations. Default is system heap.
 GRALLOC_USE_ION_COMPOUND_PAGE_HEAP?=0
 # Properly initializes an empty AFBC buffer
@@ -59,7 +59,7 @@ GRALLOC_DEPTH?=GRALLOC_32_BITS
 # When enabled, forces display framebuffer format to BGRA_8888
 GRALLOC_FB_SWAP_RED_BLUE?=1
 # Disables the framebuffer HAL device. When a hwc impl is available.
-GRALLOC_DISABLE_FRAMEBUFFER_HAL?=0
+GRALLOC_DISABLE_FRAMEBUFFER_HAL?=1
 # When enabled, buffers will never be allocated with AFBC
 GRALLOC_ARM_NO_EXTERNAL_AFBC?=0
 # Minimum buffer dimensions in pixels when buffer will use AFBC
@@ -153,12 +153,9 @@ LOCAL_PRELINK_MODULE := false
 LOCAL_MODULE_RELATIVE_PATH := hw
 LOCAL_MODULE_PATH_32 := $(TARGET_OUT_VENDOR)/lib
 LOCAL_MODULE_PATH_64 := $(TARGET_OUT_VENDOR)/lib64
-ifeq ($(TARGET_BOARD_PLATFORM),)
-LOCAL_MODULE := gralloc.default
-else
-LOCAL_MODULE := gralloc.$(TARGET_BOARD_PLATFORM)
-endif
+LOCAL_MODULE := gralloc.amlogic
 
+$(info TARGET_APP_LAYER_USE_CONTINUOUS_BUFFER is $(TARGET_APP_LAYER_USE_CONTINUOUS_BUFFER))
 LOCAL_MODULE_TAGS := optional
 LOCAL_MULTILIB := both
 

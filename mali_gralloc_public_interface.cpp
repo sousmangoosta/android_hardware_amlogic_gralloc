@@ -210,6 +210,7 @@ static int32_t mali_gralloc_allocate(gralloc1_device_t *device, uint32_t numDesc
 			(void)gralloc_buffer_attr_allocate(hnd);
 
 			hnd->req_format = format;
+			hnd->format = format;
 			hnd->yuv_info = MALI_YUV_BT601_NARROW;
 			hnd->internal_format = format;
 			hnd->byte_stride = byte_stride;
@@ -221,6 +222,8 @@ static int32_t mali_gralloc_allocate(gralloc1_device_t *device, uint32_t numDesc
 		}
 	}
 	else
+#else
+        AINF("framebuffer hal alread move to hwcomposer\n");
 #endif
 	{
 		if (mali_gralloc_buffer_allocate(m, (gralloc_buffer_descriptor_t *)descriptors, numDescriptors, outBuffers,

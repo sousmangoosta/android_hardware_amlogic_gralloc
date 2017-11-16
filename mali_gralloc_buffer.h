@@ -77,7 +77,14 @@ struct private_handle_t
 		PRIV_FLAGS_FRAMEBUFFER = 0x00000001,
 		PRIV_FLAGS_USES_ION_COMPOUND_HEAP = 0x00000002,
 		PRIV_FLAGS_USES_ION = 0x00000004,
-		PRIV_FLAGS_USES_ION_DMA_HEAP = 0x00000008
+		PRIV_FLAGS_USES_ION_DMA_HEAP = 0x00000008,
+
+		PRIV_FLAGS_VIDEO_OVERLAY = 0x00000010,
+		PRIV_FLAGS_VIDEO_OMX     = 0x00000020,
+		PRIV_FLAGS_CURSOR = 0x00000040,
+		PRIV_FLAGS_OSD_VIDEO_OMX = 0x00000080,
+		PRIV_FLAGS_CONTINUOUS_BUF = 0x00000100,
+		PRIV_FLAGS_SECURE_PROTECTED = 0x00000200,
 	};
 
 	enum
@@ -106,6 +113,7 @@ struct private_handle_t
 	int size;
 	int width;
 	int height;
+	int format;
 	int internalWidth;
 	int internalHeight;
 	int stride;
@@ -114,6 +122,7 @@ struct private_handle_t
 		void *base;
 		uint64_t padding;
 	};
+	int      usage;
 	uint64_t consumer_usage;
 	uint64_t producer_usage;
 	uint64_t backing_store_id;
@@ -220,6 +229,7 @@ struct private_handle_t
 		version = sizeof(native_handle);
 		numFds = sNumFds;
 		numInts = NUM_INTS_IN_PRIVATE_HANDLE;
+		format  = _req_format;
 	}
 
 	~private_handle_t()

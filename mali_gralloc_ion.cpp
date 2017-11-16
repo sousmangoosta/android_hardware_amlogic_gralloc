@@ -89,10 +89,11 @@ static void init_afbc(uint8_t *buf, uint64_t internal_format, int w, int h)
 	}
 }
 
-static int alloc_from_ion_heap(int ion_fd, size_t size, unsigned int heap_mask, unsigned int flags, int *min_pgsz)
+static int alloc_from_ion_heap(int ion_fd, size_t size, unsigned int *mask, unsigned int flags, int *min_pgsz)
 {
 	ion_user_handle_t ion_hnd = -1;
 	int shared_fd, ret;
+	unsigned int heap_mask = *mask;
 
 	if ((ion_fd < 0) || (size <= 0) || (heap_mask == 0) || (min_pgsz == NULL))
 	{
@@ -187,6 +188,7 @@ static int alloc_from_ion_heap(int ion_fd, size_t size, unsigned int heap_mask, 
 			break;
 		}
 	}
+	*mask = heap_mask;
 
 	return shared_fd;
 }
@@ -361,6 +363,10 @@ int mali_gralloc_ion_allocate(mali_gralloc_module *m, const gralloc_buffer_descr
 		usage = max_bufDescriptor->consumer_usage | max_bufDescriptor->producer_usage;
 
 		heap_mask = pick_ion_heap(usage);
+		if ((max_bufDescriptor->size > 8294400) && (usage & GRALLOC_USAGE_HW_COMPOSER))
+		{
+			heap_mask = ION_HEAP_SYSTEM_MASK;
+		}
 
 		if (heap_mask == 0)
 		{
@@ -370,8 +376,9 @@ int mali_gralloc_ion_allocate(mali_gralloc_module *m, const gralloc_buffer_descr
 
 		set_ion_flags(heap_mask, usage, &priv_heap_flag, &ion_flags);
 
-		shared_fd = alloc_from_ion_heap(m->ion_client, max_bufDescriptor->size, heap_mask, ion_flags, &min_pgsz);
+		shared_fd = alloc_from_ion_heap(m->ion_client, max_bufDescriptor->size, &heap_mask, ion_flags, &min_pgsz);
 
+		set_ion_flags(heap_mask, usage, &priv_heap_flag, NULL);
 		if (shared_fd < 0)
 		{
 			AERR("ion_alloc failed form client: ( %d )", m->ion_client);
@@ -423,6 +430,10 @@ int mali_gralloc_ion_allocate(mali_gralloc_module *m, const gralloc_buffer_descr
 			usage = bufDescriptor->consumer_usage | bufDescriptor->producer_usage;
 
 			heap_mask = pick_ion_heap(usage);
+			if ((bufDescriptor->size > 8294400) && (usage & GRALLOC_USAGE_HW_COMPOSER))
+			{
+				heap_mask = ION_HEAP_SYSTEM_MASK;
+			}
 
 			if (heap_mask == 0)
 			{
@@ -433,7 +444,9 @@ int mali_gralloc_ion_allocate(mali_gralloc_module *m, const gralloc_buffer_descr
 
 			set_ion_flags(heap_mask, usage, &priv_heap_flag, &ion_flags);
 
-			shared_fd = alloc_from_ion_heap(m->ion_client, bufDescriptor->size, heap_mask, ion_flags, &min_pgsz);
+			shared_fd = alloc_from_ion_heap(m->ion_client, bufDescriptor->size, &heap_mask, ion_flags, &min_pgsz);
+
+			set_ion_flags(heap_mask, usage, &priv_heap_flag, NULL);
 
 			if (shared_fd < 0)
 			{
@@ -468,6 +481,7 @@ int mali_gralloc_ion_allocate(mali_gralloc_module *m, const gralloc_buffer_descr
 		private_handle_t *hnd = (private_handle_t *)(pHandle[i]);
 
 		usage = bufDescriptor->consumer_usage | bufDescriptor->producer_usage;
+		hnd->usage = usage;
 
 		if (!(usage & GRALLOC_USAGE_PROTECTED))
 		{
