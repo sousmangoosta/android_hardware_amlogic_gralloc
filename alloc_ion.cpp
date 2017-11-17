@@ -125,7 +125,7 @@ int alloc_backend_alloc(alloc_device_t* dev, size_t size, int usage, buffer_hand
 	}
 #endif
 #ifdef GRALLOC_APP_ALLOC_CONTINUOUS_BUF
-	else if (usage & GRALLOC_USAGE_HW_COMPOSER
+	else if ((size <= 8294400) && usage & GRALLOC_USAGE_HW_COMPOSER
 		&& !(usage & GRALLOC_USAGE_AML_VIDEO_OVERLAY
 		|| usage & GRALLOC_USAGE_AML_OMX_OVERLAY)) {
 		layerAllocContinousBuf = true;
