@@ -515,12 +515,12 @@ int init_frame_buffer_locked(struct framebuffer_info_t* fbinfo)
 	return 0;
 }
 
+#define FBIOPUT_OSD_SYNC_ADD	      0x4518
 int fb_post_with_fence_locked(
 			struct framebuffer_info_t* fbinfo,
 			buffer_handle_t hnd,
 			int in_fence)
 {
-#define FBIOPUT_OSD_SYNC_ADD	0x4518
 	typedef struct {
 		unsigned int    xoffset;
 		unsigned int    yoffset;
@@ -537,26 +537,62 @@ int fb_post_with_fence_locked(
 	// acquire fence.
 	sync_req.in_fen_fd = in_fence;
 
-	ALOGV( "old post: req offset: %d\n", sync_req.yoffset);
+	ALOGV( "req offset: %d\n", sync_req.yoffset);
 	ioctl(fbinfo->fd, FBIOPUT_OSD_SYNC_ADD, &sync_req);
 
 	return sync_req.out_fen_fd;
 }
 
-int hwc_fb_post_with_fence_locked(
+#define FBIOPUT_OSD_SYNC_RENDER_ADD   0x4519
+#define FB_SYNC_REQUEST_MAGIC         0x54376812
+#define FB_SYNC_REQUEST_RENDER_MAGIC  0x55386816
+int hwc_old_fb_post_with_fence_locked(
+			struct framebuffer_info_t* fbinfo,
+			struct hwc_fb_sync_request_t* fb_sync_req,
+			buffer_handle_t hnd)
+{
+	typedef struct {
+		int             magic;
+		int             len;
+		unsigned int    xoffset;
+		unsigned int    yoffset;
+		int             in_fen_fd;
+		int             out_fen_fd;
+		int             format;
+		int             reserved[3];
+	} hwc_old_fb_sync_request_t;
+
+	private_handle_t const* buffer = reinterpret_cast<private_handle_t const*>(hnd);
+	hwc_old_fb_sync_request_t sync_req;
+
+	memset(&sync_req, 0, sizeof(hwc_old_fb_sync_request_t));
+	sync_req.magic     = FB_SYNC_REQUEST_MAGIC;
+	sync_req.len       = sizeof(hwc_old_fb_sync_request_t);
+	sync_req.xoffset   = fbinfo->info.xoffset;
+	sync_req.yoffset   = buffer->offset / fbinfo->finfo.line_length;
+	// acquire fence.
+	sync_req.format    = fb_sync_req->format;
+	sync_req.in_fen_fd = fb_sync_req->in_fen_fd;
+
+	ALOGE( "len: %d, req offset: %d\n", sync_req.len, sync_req.yoffset);
+	ioctl(fbinfo->fd, FBIOPUT_OSD_SYNC_ADD, &sync_req);
+
+	return sync_req.out_fen_fd;
+}
+
+int hwc_new_fb_post_with_fence_locked(
 			struct framebuffer_info_t* fbinfo,
 			struct hwc_fb_sync_request_t* sync_req,
 			buffer_handle_t hnd)
 {
-	#define FBIOPUT_OSD_SYNC_RENDER_ADD	0x4519
 	sync_req->shared_fd = -1;
 
 	if (hnd) {
-		private_handle_t const* buffer = reinterpret_cast<private_handle_t const*>(hnd);
+		private_handle_t const* buffer = private_handle_t::dynamicCast(hnd);
 		switch (sync_req->type) {
 			case GLES_COMPOSE_MODE:
 			#if PLATFORM_SDK_VERSION >= 26
-				ALOGV("gles pass to direct compose mode.");
+				ALOGE("gles pass to direct compose mode.");
 				sync_req->type = DIRECT_COMPOSE_MODE;
 				sync_req->xoffset = sync_req->dst_x = 0;
 				sync_req->yoffset = sync_req->dst_y = 0;
@@ -565,15 +601,15 @@ int hwc_fb_post_with_fence_locked(
 			#else
 				sync_req->xoffset = fbinfo->info.xoffset;
 				sync_req->yoffset = buffer->offset / fbinfo->finfo.line_length;
-				ALOGV( "GLES, req offset: %d",sync_req->yoffset);
+				ALOGE( "GLES, req offset: %d",sync_req->yoffset);
 			break;
 			#endif
 			case DIRECT_COMPOSE_MODE:
-				sync_req->format = buffer->format;
+				// sync_req->format = buffer->format;
 				sync_req->shared_fd = buffer->share_fd;
 				sync_req->byte_stride = buffer->byte_stride;
 				sync_req->stride = buffer->stride;
-				ALOGV( "Direct, src: (%d, %d, %d, %d), dst: (%d, %d, %d, %d)",
+				ALOGE( "Direct, src: (%d, %d, %d, %d), dst: (%d, %d, %d, %d)",
 							sync_req->xoffset,
 							sync_req->yoffset,
 							sync_req->width,
@@ -586,10 +622,10 @@ int hwc_fb_post_with_fence_locked(
 			case GE2D_COMPOSE_MODE:
 				sync_req->width = fbinfo->info.xres;
 				sync_req->height = fbinfo->info.yres;
-				sync_req->format = HAL_PIXEL_FORMAT_RGBA_8888;
+				// sync_req->format = HAL_PIXEL_FORMAT_RGBA_8888;
 				sync_req->yoffset = fbinfo->yOffset;
 				sync_req->shared_fd = buffer->share_fd;
-				ALOGV( "GE2D, width: %d, height: %d",
+				ALOGE( "GE2D, width: %d, height: %d",
 							sync_req->width,
 							sync_req->height);
 			break;
@@ -600,7 +636,10 @@ int hwc_fb_post_with_fence_locked(
 	} else {
 		ALOGV("hwc FB post blank without buffer.");
 	}
-	ALOGV( "hwc format: %d, shared_fd: %d, op: 0x%x, byte_stride: %d, pixel_stride: %d",
+	sync_req->magic   = FB_SYNC_REQUEST_RENDER_MAGIC;
+	sync_req->len     = sizeof(hwc_fb_sync_request_t);
+	ALOGE( "hwc len: %d, format: %d, shared_fd: %d, op: 0x%x, byte_stride: %d, pixel_stride: %d",
+				sync_req->len,
 				sync_req->format,
 				sync_req->shared_fd,
 				sync_req->op,

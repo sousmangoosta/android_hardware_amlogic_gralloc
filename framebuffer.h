@@ -43,6 +43,8 @@ typedef struct framebuffer_info_t{
 }framebuffer_info_t;
 
 typedef struct hwc_fb_sync_request_t{
+    int             magic;
+    int             len;
     unsigned int    xoffset;
     unsigned int    yoffset;
     int             in_fen_fd;
@@ -75,7 +77,11 @@ int fb_post_with_fence_locked(
         struct framebuffer_info_t* fbinfo,
         buffer_handle_t hnd,
         int in_fence);
-int hwc_fb_post_with_fence_locked(
+int hwc_old_fb_post_with_fence_locked(
+        struct framebuffer_info_t* fbinfo,
+        struct hwc_fb_sync_request_t* fb_sync_req,
+        buffer_handle_t hnd);
+int hwc_new_fb_post_with_fence_locked(
         struct framebuffer_info_t* fbinfo,
         struct hwc_fb_sync_request_t* sync_req,
         buffer_handle_t hnd);
