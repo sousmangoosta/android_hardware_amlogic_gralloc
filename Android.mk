@@ -173,10 +173,14 @@ ifeq ($(shell test $(PLATFORM_SDK_VERSION) -ge 26 && echo OK),OK)
 LOCAL_CFLAGS += -DGRALLOC_ALLOC_FB_FROM_ION=1
 endif
 
+ifeq ($(shell test $(PLATFORM_SDK_VERSION) -ge 26 && echo OK),OK)
+LOCAL_MODULE_RELATIVE_PATH := hw
+else
 ifneq ($(TARGET_2ND_ARCH),)
 LOCAL_MODULE_RELATIVE_PATH := hw
 else
 LOCAL_MODULE_PATH := $(TARGET_OUT_SHARED_LIBRARIES)/hw
+endif
 endif
 ifeq ($(TARGET_BOARD_PLATFORM),)
 LOCAL_MODULE := gralloc.default
