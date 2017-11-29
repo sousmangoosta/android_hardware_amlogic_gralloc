@@ -515,7 +515,8 @@ int init_frame_buffer_locked(struct framebuffer_info_t* fbinfo)
 	return 0;
 }
 
-#define FBIOPUT_OSD_SYNC_ADD	      0x4518
+#define FBIOPUT_OSD_SYNC_ADD         0x4518
+#define FBIOPUT_OSD_SYNC_RENDER_ADD  0x4519
 int fb_post_with_fence_locked(
 			struct framebuffer_info_t* fbinfo,
 			buffer_handle_t hnd,
@@ -543,7 +544,73 @@ int fb_post_with_fence_locked(
 	return sync_req.out_fen_fd;
 }
 
-#define FBIOPUT_OSD_SYNC_RENDER_ADD   0x4519
+int hwc_fb_post_with_fence_locked(
+			struct framebuffer_info_t* fbinfo,
+			struct hwc_fb_sync_request_t* sync_req,
+			buffer_handle_t hnd)
+{
+	sync_req->shared_fd = -1;
+
+	if (hnd) {
+		private_handle_t const* buffer = private_handle_t::dynamicCast(hnd);
+		switch (sync_req->type) {
+			case GLES_COMPOSE_MODE:
+			#if PLATFORM_SDK_VERSION >= 26
+				ALOGV("gles pass to direct compose mode.");
+				sync_req->type = DIRECT_COMPOSE_MODE;
+				sync_req->xoffset = sync_req->dst_x = 0;
+				sync_req->yoffset = sync_req->dst_y = 0;
+				sync_req->width = sync_req->dst_w = buffer->width;
+				sync_req->height = sync_req->dst_h = buffer->height;
+			#else
+				sync_req->xoffset = fbinfo->info.xoffset;
+				sync_req->yoffset = buffer->offset / fbinfo->finfo.line_length;
+				ALOGV( "GLES, req offset: %d",sync_req->yoffset);
+			break;
+			#endif
+			case DIRECT_COMPOSE_MODE:
+				sync_req->format = buffer->format;
+				sync_req->shared_fd = buffer->share_fd;
+				sync_req->byte_stride = buffer->byte_stride;
+				sync_req->stride = buffer->stride;
+				ALOGV( "Direct, src: (%d, %d, %d, %d), dst: (%d, %d, %d, %d)",
+							sync_req->xoffset,
+							sync_req->yoffset,
+							sync_req->width,
+							sync_req->height,
+							sync_req->dst_x,
+							sync_req->dst_y,
+							sync_req->dst_w,
+							sync_req->dst_h);
+			break;
+			case GE2D_COMPOSE_MODE:
+				sync_req->width = fbinfo->info.xres;
+				sync_req->height = fbinfo->info.yres;
+				sync_req->format = HAL_PIXEL_FORMAT_RGBA_8888;
+				sync_req->yoffset = fbinfo->yOffset;
+				sync_req->shared_fd = buffer->share_fd;
+				ALOGV( "GE2D, width: %d, height: %d",
+							sync_req->width,
+							sync_req->height);
+			break;
+			default:
+				ALOGE("hwc unknown compose mode!!!");
+			break;
+		}
+	} else {
+		ALOGV("hwc FB post blank without buffer.");
+	}
+	ALOGV( "hwc format: %d, shared_fd: %d, op: 0x%x, byte_stride: %d, pixel_stride: %d",
+				sync_req->format,
+				sync_req->shared_fd,
+				sync_req->op,
+				sync_req->byte_stride,
+				sync_req->stride);
+	ioctl(fbinfo->fd, FBIOPUT_OSD_SYNC_RENDER_ADD, sync_req);
+	return sync_req->out_fen_fd;
+}
+
+#if PLATFORM_SDK_VERSION < 26
 #define FB_SYNC_REQUEST_MAGIC         0x54376812
 #define FB_SYNC_REQUEST_RENDER_MAGIC  0x55386816
 int hwc_old_fb_post_with_fence_locked(
@@ -574,7 +641,7 @@ int hwc_old_fb_post_with_fence_locked(
 	sync_req.format    = fb_sync_req->format;
 	sync_req.in_fen_fd = fb_sync_req->in_fen_fd;
 
-	ALOGE( "len: %d, req offset: %d\n", sync_req.len, sync_req.yoffset);
+	ALOGV( "len: %d, req offset: %d\n", sync_req.len, sync_req.yoffset);
 	ioctl(fbinfo->fd, FBIOPUT_OSD_SYNC_ADD, &sync_req);
 
 	return sync_req.out_fen_fd;
@@ -592,7 +659,7 @@ int hwc_new_fb_post_with_fence_locked(
 		switch (sync_req->type) {
 			case GLES_COMPOSE_MODE:
 			#if PLATFORM_SDK_VERSION >= 26
-				ALOGE("gles pass to direct compose mode.");
+				ALOGV("gles pass to direct compose mode.");
 				sync_req->type = DIRECT_COMPOSE_MODE;
 				sync_req->xoffset = sync_req->dst_x = 0;
 				sync_req->yoffset = sync_req->dst_y = 0;
@@ -601,7 +668,7 @@ int hwc_new_fb_post_with_fence_locked(
 			#else
 				sync_req->xoffset = fbinfo->info.xoffset;
 				sync_req->yoffset = buffer->offset / fbinfo->finfo.line_length;
-				ALOGE( "GLES, req offset: %d",sync_req->yoffset);
+				ALOGV( "GLES, req offset: %d",sync_req->yoffset);
 			break;
 			#endif
 			case DIRECT_COMPOSE_MODE:
@@ -609,7 +676,7 @@ int hwc_new_fb_post_with_fence_locked(
 				sync_req->shared_fd = buffer->share_fd;
 				sync_req->byte_stride = buffer->byte_stride;
 				sync_req->stride = buffer->stride;
-				ALOGE( "Direct, src: (%d, %d, %d, %d), dst: (%d, %d, %d, %d)",
+				ALOGV( "Direct, src: (%d, %d, %d, %d), dst: (%d, %d, %d, %d)",
 							sync_req->xoffset,
 							sync_req->yoffset,
 							sync_req->width,
@@ -625,7 +692,7 @@ int hwc_new_fb_post_with_fence_locked(
 				// sync_req->format = HAL_PIXEL_FORMAT_RGBA_8888;
 				sync_req->yoffset = fbinfo->yOffset;
 				sync_req->shared_fd = buffer->share_fd;
-				ALOGE( "GE2D, width: %d, height: %d",
+				ALOGV( "GE2D, width: %d, height: %d",
 							sync_req->width,
 							sync_req->height);
 			break;
@@ -638,7 +705,7 @@ int hwc_new_fb_post_with_fence_locked(
 	}
 	sync_req->magic   = FB_SYNC_REQUEST_RENDER_MAGIC;
 	sync_req->len     = sizeof(hwc_fb_sync_request_t);
-	ALOGE( "hwc len: %d, format: %d, shared_fd: %d, op: 0x%x, byte_stride: %d, pixel_stride: %d",
+	ALOGV( "hwc len: %d, format: %d, shared_fd: %d, op: 0x%x, byte_stride: %d, pixel_stride: %d",
 				sync_req->len,
 				sync_req->format,
 				sync_req->shared_fd,
@@ -648,6 +715,7 @@ int hwc_new_fb_post_with_fence_locked(
 	ioctl(fbinfo->fd, FBIOPUT_OSD_SYNC_RENDER_ADD, sync_req);
 	return sync_req->out_fen_fd;
 }
+#endif
 
 int fb_post_locked(struct framebuffer_info_t* fbinfo, buffer_handle_t hnd)
 {
