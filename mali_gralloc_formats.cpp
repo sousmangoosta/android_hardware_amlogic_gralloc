@@ -29,6 +29,8 @@
 
 #include "mali_gralloc_module.h"
 #include "gralloc_priv.h"
+#include <cutils/properties.h>
+#include <stdlib.h>
 
 static mali_gralloc_format_caps dpu_runtime_caps;
 static mali_gralloc_format_caps vpu_runtime_caps;
@@ -45,6 +47,17 @@ static bool runtime_caps_read = false;
 #define MALI_GRALLOC_GPU_LIBRARY_PATH1 "/vendor/lib/egl/"
 #define MALI_GRALLOC_GPU_LIBRARY_PATH2 "/system/lib/egl/"
 #endif
+
+bool afbc_enable()
+{
+	char osd_afbcd[PROPERTY_VALUE_MAX];
+	if (property_get("osd.afbcd.enable", osd_afbcd, NULL ) > 0 && atoi(osd_afbcd) == 1)
+	{
+		ALOGD("AFBC Enabled!");
+		return true;
+	}
+	return false;
+}
 
 static bool get_block_capabilities(bool hal_module, const char *name, mali_gralloc_format_caps *block_caps)
 {
@@ -190,7 +203,6 @@ static uint64_t determine_best_format(int req_format, mali_gralloc_producer_type
 	    gpu_runtime_caps.caps_mask & MALI_GRALLOC_FORMAT_CAPABILITY_OPTIONS_PRESENT)
 	{
 		gpu_mask &= producer_runtime_mask;
-
 		if (consumer == MALI_GRALLOC_CONSUMER_GPU_OR_DISPLAY)
 		{
 			gpu_mask &= consumer_runtime_mask;
@@ -523,6 +535,11 @@ static void determine_format_capabilities()
 		dpu_runtime_caps.caps_mask |= MALI_GRALLOC_FORMAT_CAPABILITY_AFBC_SPLITBLK;
 #endif
 #endif
+	if (afbc_enable()) {
+		dpu_runtime_caps.caps_mask |= MALI_GRALLOC_FORMAT_CAPABILITY_OPTIONS_PRESENT;
+		dpu_runtime_caps.caps_mask |= MALI_GRALLOC_FORMAT_CAPABILITY_AFBC_SPLITBLK;
+		}
+
 	}
 
 	/* Determine GPU format capabilities */
@@ -546,8 +563,9 @@ static void determine_format_capabilities()
 
 		/* Need to verify when to remove this */
 		gpu_runtime_caps.caps_mask |= MALI_GRALLOC_FORMAT_CAPABILITY_AFBC_YUV_NOWRITE;
-
-#if MALI_SUPPORT_AFBC_SPLITBLK == 1
+#endif /* MALI_GPU_SUPPORT_AFBC_BASIC == 1 */
+#if MALI_GPU_SUPPORT_AFBC_SPLITBLK == 1
+		gpu_runtime_caps.caps_mask |= MALI_GRALLOC_FORMAT_CAPABILITY_OPTIONS_PRESENT;
 		gpu_runtime_caps.caps_mask |= MALI_GRALLOC_FORMAT_CAPABILITY_AFBC_SPLITBLK;
 #endif
 
@@ -565,7 +583,7 @@ static void determine_format_capabilities()
 		gpu_runtime_caps.caps_mask |= MALI_GRALLOC_FORMAT_CAPABILITY_AFBC_WIDEBLK;
 		gpu_runtime_caps.caps_mask |= MALI_GRALLOC_FORMAT_CAPABILITY_AFBC_TILED_HEADERS;
 #endif
-#endif /* MALI_GPU_SUPPORT_AFBC_BASIC == 1 */
+
 	}
 
 /* Determine VPU format capabilities */
@@ -626,7 +644,6 @@ uint64_t mali_gralloc_select_format(uint64_t req_format, mali_gralloc_format_typ
 		internal_format = decode_internal_format(req_format, type);
 		goto out;
 	}
-
 	/* Re-map special Android formats */
 	req_format_mapped = map_flex_formats(req_format);
 
@@ -672,7 +689,6 @@ uint64_t mali_gralloc_select_format(uint64_t req_format, mali_gralloc_format_typ
 	/* Automatically select format in case producer/consumer identified */
 	internal_format =
 	    determine_best_format(req_format_mapped, producer, consumer, producer_runtime_mask, consumer_runtime_mask);
-
 out:
 	ALOGV("mali_gralloc_select_format: req_format=0x%08" PRIx64 " req_fmt_mapped=0x%" PRIx64
 	      " internal_format=0x%" PRIx64 " usage=0x%" PRIx64,

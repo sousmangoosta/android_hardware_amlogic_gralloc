@@ -73,6 +73,11 @@ GRALLOC_VSYNC_BACKEND?=default
 include $(CLEAR_VARS)
 include $(BUILD_SYSTEM)/version_defaults.mk
 
+ifneq ($(findstring $(GPU_ARCH), midgard bifrost),)
+	MALI_GPU_SUPPORT_AFBC_SPLITBLK = 1
+	GRALLOC_INIT_AFBC = 1
+endif
+$(warning "the value of  is $(GPU_ARCH)")
 ifeq ($(TARGET_BOARD_PLATFORM), juno)
 ifeq ($(MALI_MMSS), 1)
 
@@ -123,6 +128,11 @@ LOCAL_C_INCLUDES := $(MALI_LOCAL_PATH) $(MALI_DDK_INCLUDES)
 
 # General compilation flags
 LOCAL_CFLAGS := -Werror -DLOG_TAG=\"gralloc\" -DPLATFORM_SDK_VERSION=$(PLATFORM_SDK_VERSION)
+
+#resolution ratio flag
+BOARD_RESOLUTION_RATIO ?= 1080
+LOCAL_CFLAGS += -DBOARD_RESOLUTION_RATIO=$(BOARD_RESOLUTION_RATIO)
+$(warning "the value of BOARD_RESOLUTION_RATIO is $(BOARD_RESOLUTION_RATIO)")
 
 # Static hw flags
 LOCAL_CFLAGS += -DMALI_GPU_SUPPORT_AFBC_BASIC=$(MALI_GPU_SUPPORT_AFBC_BASIC)

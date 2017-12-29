@@ -45,6 +45,7 @@
 #include "mali_gralloc_usages.h"
 #include "mali_gralloc_bufferdescriptor.h"
 
+
 static void mali_gralloc_ion_free_internal(buffer_handle_t *pHandle, uint32_t num_hnds);
 
 static void init_afbc(uint8_t *buf, uint64_t internal_format, int w, int h)
@@ -363,10 +364,14 @@ int mali_gralloc_ion_allocate(mali_gralloc_module *m, const gralloc_buffer_descr
 		usage = max_bufDescriptor->consumer_usage | max_bufDescriptor->producer_usage;
 
 		heap_mask = pick_ion_heap(usage);
-		if ((max_bufDescriptor->size > 8294400) && (usage & GRALLOC_USAGE_HW_COMPOSER))
-		{
-			heap_mask = ION_HEAP_SYSTEM_MASK;
-		}
+#if BOARD_RESOLUTION_RATIO == 720
+		if ((max_bufDescriptor->width > 1280) && (max_bufDescriptor->height > 720) && (usage & GRALLOC_USAGE_HW_COMPOSER))
+#else
+		if ((max_bufDescriptor->width > 1920) && (max_bufDescriptor->height > 1080) && (usage & GRALLOC_USAGE_HW_COMPOSER))
+#endif
+			{
+				heap_mask = ION_HEAP_SYSTEM_MASK;
+			}
 
 		if (heap_mask == 0)
 		{
@@ -430,10 +435,14 @@ int mali_gralloc_ion_allocate(mali_gralloc_module *m, const gralloc_buffer_descr
 			usage = bufDescriptor->consumer_usage | bufDescriptor->producer_usage;
 
 			heap_mask = pick_ion_heap(usage);
-			if ((bufDescriptor->size > 8294400) && (usage & GRALLOC_USAGE_HW_COMPOSER))
-			{
-				heap_mask = ION_HEAP_SYSTEM_MASK;
-			}
+#if BOARD_RESOLUTION_RATIO == 720
+			if ((bufDescriptor->width > 1280) && (bufDescriptor->height > 720) && (usage & GRALLOC_USAGE_HW_COMPOSER))
+#else
+			if ((bufDescriptor->width > 1920) && (bufDescriptor->height > 1080) && (usage & GRALLOC_USAGE_HW_COMPOSER))
+#endif
+				{
+					heap_mask = ION_HEAP_SYSTEM_MASK;
+				}
 
 			if (heap_mask == 0)
 			{
