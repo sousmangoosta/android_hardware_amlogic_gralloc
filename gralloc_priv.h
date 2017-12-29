@@ -30,11 +30,7 @@
 #include <cutils/native_handle.h>
 #include <utils/Log.h>
 
-#if GRALLOC_USE_GRALLOC1_API
 #include <hardware/gralloc1.h>
-#else
-#include <hardware/gralloc.h>
-#endif
 /**
  * mali_gralloc_formats.h needs the define for GRALLOC_MODULE_API_VERSION_0_3 and
  * GRALLOC_MODULE_API_VERSION_1_0, so include <gralloc1.h> or <gralloc.h> before
