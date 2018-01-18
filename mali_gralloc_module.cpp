@@ -22,7 +22,7 @@
 
 #include <cutils/log.h>
 #include <cutils/atomic.h>
-#include <system/window.h>
+//#include <system/window.h>
 #include <hardware/hardware.h>
 #include <hardware/fb.h>
 

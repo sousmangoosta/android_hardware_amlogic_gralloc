@@ -18,7 +18,7 @@
 
 #include <sys/ioctl.h>
 #include <errno.h>
-#include <system/window.h>
+//#include <system/window.h>
 
 #include <hardware/hardware.h>
 #include <hardware/fb.h>

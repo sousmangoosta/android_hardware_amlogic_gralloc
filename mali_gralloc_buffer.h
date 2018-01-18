@@ -18,6 +18,7 @@
 #ifndef MALI_GRALLOC_BUFFER_H_
 #define MALI_GRALLOC_BUFFER_H_
 
+#include <unistd.h>
 #include <linux/ion.h>
 #include <sys/mman.h>
 

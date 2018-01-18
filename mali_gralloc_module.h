@@ -18,7 +18,7 @@
 #ifndef MALI_GRALLOC_MODULE_H_
 #define MALI_GRALLOC_MODULE_H_
 
-#include <system/window.h>
+//#include <system/window.h>
 #include <linux/fb.h>
 #include <pthread.h>
 

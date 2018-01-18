@@ -23,7 +23,7 @@
 #include <sys/ioctl.h>
 #include <linux/fb.h>
 
-#include <system/window.h>
+//#include <system/window.h>
 #include <cutils/log.h>
 #include <cutils/atomic.h>
 #include <hardware/hardware.h>
