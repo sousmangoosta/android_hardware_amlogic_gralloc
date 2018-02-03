@@ -35,7 +35,7 @@
 #else
 #include <hardware/gralloc.h>
 #endif
-
+#include "gralloc_usage_ext.h"
 #include "mali_gralloc_module.h"
 #include "mali_gralloc_private_interface_types.h"
 #include "mali_gralloc_buffer.h"
@@ -286,6 +286,19 @@ void set_ion_flags(unsigned int heap_type, uint64_t usage, unsigned int *priv_he
 		}
 
 #endif
+        if (usage & GRALLOC_USAGE_AML_VIDEO_OVERLAY)
+        {
+            *priv_heap_flag |= private_handle_t::PRIV_FLAGS_VIDEO_OVERLAY;
+        }
+        if (usage & GRALLOC_USAGE_AML_DMA_BUFFER)
+        {
+            *priv_heap_flag |= private_handle_t::PRIV_FLAGS_OSD_VIDEO_OMX;
+        }
+        if (usage & GRALLOC_USAGE_AML_OMX_OVERLAY)
+        {
+            *priv_heap_flag |= private_handle_t::PRIV_FLAGS_VIDEO_OMX;
+        }
+
 	}
 
 	if (ion_flags)
