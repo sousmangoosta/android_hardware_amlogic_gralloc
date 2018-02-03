@@ -296,7 +296,7 @@ void set_ion_flags(unsigned int heap_type, uint64_t usage, unsigned int *priv_he
         }
         if (usage & GRALLOC_USAGE_AML_OMX_OVERLAY)
         {
-            *priv_heap_flag |= private_handle_t::PRIV_FLAGS_VIDEO_OMX;
+            *priv_heap_flag |= private_handle_t::PRIV_FLAGS_VIDEO_OVERLAY | private_handle_t::PRIV_FLAGS_VIDEO_OMX;
         }
 
 	}
