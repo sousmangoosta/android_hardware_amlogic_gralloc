@@ -18,7 +18,10 @@
 
 #include <sys/ioctl.h>
 #include <errno.h>
-//#include <system/window.h>
+
+#if PLATFORM_SDK_VERSION < 27
+#include <system/window.h>
+#endif
 
 #include <hardware/hardware.h>
 #include <hardware/fb.h>
