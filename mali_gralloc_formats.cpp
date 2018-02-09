@@ -211,7 +211,14 @@ static uint64_t determine_best_format(int req_format, mali_gralloc_producer_type
 			if (gpu_mask & MALI_GRALLOC_FORMAT_CAPABILITY_AFBC_SPLITBLK &&
 			    dpu_mask & MALI_GRALLOC_FORMAT_CAPABILITY_AFBC_SPLITBLK)
 			{
-				internal_format |= MALI_GRALLOC_INTFMT_AFBC_SPLITBLK;
+				if (gpu_mask & MALI_GRALLOC_FORMAT_CAPABILITY_AFBC_WIDEBLK &&
+				    dpu_mask & MALI_GRALLOC_FORMAT_CAPABILITY_AFBC_WIDEBLK)
+				{
+					internal_format |= MALI_GRALLOC_INTFMT_AFBC_WIDEBLK;
+				} else {
+					internal_format |= MALI_GRALLOC_INTFMT_AFBC_SPLITBLK;
+				}
+
 			}
 			else if (gpu_mask & MALI_GRALLOC_FORMAT_CAPABILITY_AFBC_BASIC &&
 			         dpu_mask & MALI_GRALLOC_FORMAT_CAPABILITY_AFBC_BASIC)
@@ -502,6 +509,64 @@ static bool determine_consumer(mali_gralloc_consumer_type *consumer, uint64_t *c
 	return rval;
 }
 
+int get_meson_dpu_gpu_caps()
+{
+	char osd_afbcd[PROPERTY_VALUE_MAX];
+	int  osd_afbcd_enabled = 0;
+	char osd_afbcd_value[] = "00";
+	int  osd_afbcd_fd = -1;
+
+    ALOGD("AFBC %d\n", __LINE__);
+	if (property_get("osd.afbcd.enable", osd_afbcd, "0") > 0)
+	{
+		osd_afbcd_enabled = atoi(osd_afbcd);
+	}
+    ALOGD("AFBC %d\n", __LINE__);
+
+	osd_afbcd_fd = open("/sys/class/graphics/fb0/osd_afbcd", O_RDWR, 0644);
+    ALOGD("AFBC %d\n", __LINE__);
+	if (osd_afbcd_fd < 0) {
+		ALOGD("errno=%d, %s", errno, strerror(errno));
+		return -EPERM;
+	}
+
+    ALOGD("AFBC %d\n", __LINE__);
+	if (osd_afbcd_enabled)
+		write(osd_afbcd_fd, "1", 1);
+	else
+		write(osd_afbcd_fd, "0", 1);
+
+    //FIXME read the osd_afbcd from driver.
+    //osd.afbcd.enable is 1 by default.
+    //this is error on gxl chip
+#if 0
+    ALOGD("AFBC %d\n", __LINE__);
+    read (osd_afbcd_fd, osd_afbcd, 2);
+    osd_afbcd_enabled = atoi(osd_afbcd);
+#endif
+    ALOGD("AFBC %s\n", osd_afbcd_enabled == 1? "enabled":"disabled");
+
+	close (osd_afbcd_fd);
+	osd_afbcd_fd = -1;
+    ALOGD("AFBC %d\n", __LINE__);
+
+    if (osd_afbcd_enabled) {
+        dpu_runtime_caps.caps_mask |= MALI_GRALLOC_FORMAT_CAPABILITY_OPTIONS_PRESENT;
+        dpu_runtime_caps.caps_mask |= MALI_GRALLOC_FORMAT_CAPABILITY_AFBC_BASIC;
+        dpu_runtime_caps.caps_mask |= MALI_GRALLOC_FORMAT_CAPABILITY_AFBC_SPLITBLK;
+        dpu_runtime_caps.caps_mask |= MALI_GRALLOC_FORMAT_CAPABILITY_AFBC_WIDEBLK;
+
+
+        gpu_runtime_caps.caps_mask |= MALI_GRALLOC_FORMAT_CAPABILITY_OPTIONS_PRESENT;
+        gpu_runtime_caps.caps_mask |= MALI_GRALLOC_FORMAT_CAPABILITY_AFBC_BASIC;
+        gpu_runtime_caps.caps_mask |= MALI_GRALLOC_FORMAT_CAPABILITY_AFBC_SPLITBLK;
+        gpu_runtime_caps.caps_mask |= MALI_GRALLOC_FORMAT_CAPABILITY_AFBC_WIDEBLK;
+        gpu_runtime_caps.caps_mask |= MALI_GRALLOC_FORMAT_CAPABILITY_AFBC_WIDEBLK_YUV_DISABLE;
+
+    }
+
+    return 0;
+}
 /*
  * Here we determine format capabilities for the 4 IPs we support.
  * For now these are controlled by build defines, but in the future
@@ -535,11 +600,6 @@ static void determine_format_capabilities()
 		dpu_runtime_caps.caps_mask |= MALI_GRALLOC_FORMAT_CAPABILITY_AFBC_SPLITBLK;
 #endif
 #endif
-	if (afbc_enable()) {
-		dpu_runtime_caps.caps_mask |= MALI_GRALLOC_FORMAT_CAPABILITY_OPTIONS_PRESENT;
-		dpu_runtime_caps.caps_mask |= MALI_GRALLOC_FORMAT_CAPABILITY_AFBC_SPLITBLK;
-		}
-
 	}
 
 	/* Determine GPU format capabilities */
@@ -609,15 +669,16 @@ static void determine_format_capabilities()
 	}
 #endif
 
+	get_meson_dpu_gpu_caps();
 	runtime_caps_read = true;
 
 already_init:
 	pthread_mutex_unlock(&caps_init_mutex);
 
-	ALOGV("GPU format capabilities 0x%" PRIx64, gpu_runtime_caps.caps_mask);
-	ALOGV("DPU format capabilities 0x%" PRIx64, dpu_runtime_caps.caps_mask);
-	ALOGV("VPU format capabilities 0x%" PRIx64, vpu_runtime_caps.caps_mask);
-	ALOGV("CAM format capabilities 0x%" PRIx64, cam_runtime_caps.caps_mask);
+	ALOGE("GPU format capabilities 0x%" PRIx64, gpu_runtime_caps.caps_mask);
+	ALOGE("DPU format capabilities 0x%" PRIx64, dpu_runtime_caps.caps_mask);
+	ALOGE("VPU format capabilities 0x%" PRIx64, vpu_runtime_caps.caps_mask);
+	ALOGE("CAM format capabilities 0x%" PRIx64, cam_runtime_caps.caps_mask);
 }
 
 uint64_t mali_gralloc_select_format(uint64_t req_format, mali_gralloc_format_type type, uint64_t usage, int buffer_size)
