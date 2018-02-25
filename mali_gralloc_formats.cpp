@@ -31,6 +31,10 @@
 #include "gralloc_priv.h"
 #include <cutils/properties.h>
 #include <stdlib.h>
+#define DEBUG_IO 0
+#if DEBUG_IO
+#include <linux/time.h>
+#endif
 
 static mali_gralloc_format_caps dpu_runtime_caps;
 static mali_gralloc_format_caps vpu_runtime_caps;
@@ -47,17 +51,6 @@ static bool runtime_caps_read = false;
 #define MALI_GRALLOC_GPU_LIBRARY_PATH1 "/vendor/lib/egl/"
 #define MALI_GRALLOC_GPU_LIBRARY_PATH2 "/system/lib/egl/"
 #endif
-
-bool afbc_enable()
-{
-	char osd_afbcd[PROPERTY_VALUE_MAX];
-	if (property_get("osd.afbcd.enable", osd_afbcd, NULL ) > 0 && atoi(osd_afbcd) == 1)
-	{
-		ALOGD("AFBC Enabled!");
-		return true;
-	}
-	return false;
-}
 
 static bool get_block_capabilities(bool hal_module, const char *name, mali_gralloc_format_caps *block_caps)
 {
@@ -516,39 +509,29 @@ int get_meson_dpu_gpu_caps()
 	char osd_afbcd_value[] = "00";
 	int  osd_afbcd_fd = -1;
 
-    ALOGD("AFBC %d\n", __LINE__);
-	if (property_get("osd.afbcd.enable", osd_afbcd, "0") > 0)
+	if (property_get("osd.afbcd.enable", osd_afbcd, "1") > 0)
 	{
 		osd_afbcd_enabled = atoi(osd_afbcd);
 	}
-    ALOGD("AFBC %d\n", __LINE__);
 
 	osd_afbcd_fd = open("/sys/class/graphics/fb0/osd_afbcd", O_RDWR, 0644);
-    ALOGD("AFBC %d\n", __LINE__);
 	if (osd_afbcd_fd < 0) {
 		ALOGD("errno=%d, %s", errno, strerror(errno));
 		return -EPERM;
 	}
 
-    ALOGD("AFBC %d\n", __LINE__);
 	if (osd_afbcd_enabled)
 		write(osd_afbcd_fd, "1", 1);
 	else
 		write(osd_afbcd_fd, "0", 1);
 
-    //FIXME read the osd_afbcd from driver.
-    //osd.afbcd.enable is 1 by default.
-    //this is error on gxl chip
-#if 0
-    ALOGD("AFBC %d\n", __LINE__);
-    read (osd_afbcd_fd, osd_afbcd, 2);
+    lseek(osd_afbcd_fd, 0, SEEK_SET);
+    read (osd_afbcd_fd, osd_afbcd, 1);
     osd_afbcd_enabled = atoi(osd_afbcd);
-#endif
     ALOGD("AFBC %s\n", osd_afbcd_enabled == 1? "enabled":"disabled");
 
 	close (osd_afbcd_fd);
 	osd_afbcd_fd = -1;
-    ALOGD("AFBC %d\n", __LINE__);
 
     if (osd_afbcd_enabled) {
         dpu_runtime_caps.caps_mask |= MALI_GRALLOC_FORMAT_CAPABILITY_OPTIONS_PRESENT;
@@ -556,13 +539,11 @@ int get_meson_dpu_gpu_caps()
         dpu_runtime_caps.caps_mask |= MALI_GRALLOC_FORMAT_CAPABILITY_AFBC_SPLITBLK;
         dpu_runtime_caps.caps_mask |= MALI_GRALLOC_FORMAT_CAPABILITY_AFBC_WIDEBLK;
 
-
         gpu_runtime_caps.caps_mask |= MALI_GRALLOC_FORMAT_CAPABILITY_OPTIONS_PRESENT;
         gpu_runtime_caps.caps_mask |= MALI_GRALLOC_FORMAT_CAPABILITY_AFBC_BASIC;
         gpu_runtime_caps.caps_mask |= MALI_GRALLOC_FORMAT_CAPABILITY_AFBC_SPLITBLK;
         gpu_runtime_caps.caps_mask |= MALI_GRALLOC_FORMAT_CAPABILITY_AFBC_WIDEBLK;
         gpu_runtime_caps.caps_mask |= MALI_GRALLOC_FORMAT_CAPABILITY_AFBC_WIDEBLK_YUV_DISABLE;
-
     }
 
     return 0;
@@ -577,6 +558,10 @@ static void determine_format_capabilities()
 	/* Loading libraries can take some time and
 	 * we may see many allocations at boot.
 	 */
+#if DEBUG_IO
+	struct timeval time_IO1, time_IO2;
+	int bw_IO;
+#endif
 	pthread_mutex_lock(&caps_init_mutex);
 
 	if (runtime_caps_read)
@@ -669,7 +654,17 @@ static void determine_format_capabilities()
 	}
 #endif
 
+#if DEBUG_IO
+	gettimeofday(&time_IO1, NULL);
+#endif
 	get_meson_dpu_gpu_caps();
+#if DEBUG_IO
+	gettimeofday(&time_IO2, NULL);
+	bw_IO = time_IO2.tv_sec - time_IO1.tv_sec;
+	bw_IO = bw_IO*1000000 + time_IO2.tv_usec -time_IO1.tv_usec;
+	ALOGD("get_meson_dpu_gpu_caps spend %d us\n", bw_IO);
+#endif
+
 	runtime_caps_read = true;
 
 already_init:
