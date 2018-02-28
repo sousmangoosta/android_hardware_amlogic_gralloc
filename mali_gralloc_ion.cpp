@@ -90,13 +90,13 @@ static void init_afbc(uint8_t *buf, uint64_t internal_format, int w, int h)
 	}
 }
 
-static int alloc_from_ion_heap(int ion_fd, size_t size, unsigned int *mask, unsigned int flags, int *min_pgsz)
+static int alloc_from_ion_heap(int ion_fd, size_t size, unsigned int *type, unsigned int flags, int *min_pgsz)
 {
 	ion_user_handle_t ion_hnd = -1;
 	int shared_fd, ret;
-	unsigned int heap_mask = *mask;
+	unsigned int heap_type = *type;
 
-	if ((ion_fd < 0) || (size <= 0) || (heap_mask == 0) || (min_pgsz == NULL))
+	if ((ion_fd < 0) || (size <= 0) || (min_pgsz == NULL))
 	{
 		return -1;
 	}
@@ -109,13 +109,13 @@ static int alloc_from_ion_heap(int ion_fd, size_t size, unsigned int *mask, unsi
 	 *            kernel will count the reference of file struct, so it's safe to
 	 *            be transfered between processes.
 	 */
-	ret = ion_alloc(ion_fd, size, 0, heap_mask, flags, &ion_hnd);
+	ret = ion_alloc(ion_fd, size, 0, 1<<heap_type, flags, &ion_hnd);
 
 	if (ret < 0)
 	{
 #if defined(ION_HEAP_SECURE_MASK)
 
-		if (heap_mask == ION_HEAP_SECURE_MASK)
+		if (heap_type == ION_HEAP_SECURE)
 		{
 			return -1;
 		}
@@ -124,8 +124,8 @@ static int alloc_from_ion_heap(int ion_fd, size_t size, unsigned int *mask, unsi
 		{
 			/* If everything else failed try system heap */
 			flags = 0; /* Fallback option flags are not longer valid */
-			heap_mask = ION_HEAP_SYSTEM_MASK;
-			ret = ion_alloc(ion_fd, size, 0, heap_mask, flags, &ion_hnd);
+			heap_type = ION_HEAP_TYPE_SYSTEM;
+			ret = ion_alloc(ion_fd, size, 0, 1<<heap_type, flags, &ion_hnd);
 		}
 	}
 
@@ -148,17 +148,15 @@ static int alloc_from_ion_heap(int ion_fd, size_t size, unsigned int *mask, unsi
 
 	if (ret >= 0)
 	{
-		switch (heap_mask)
+		switch (heap_type)
 		{
-		case ION_HEAP_SYSTEM_MASK:
+		case ION_HEAP_TYPE_SYSTEM:
 			*min_pgsz = SZ_4K;
 			break;
 
-		case ION_HEAP_SYSTEM_CONTIG_MASK:
-		case ION_HEAP_CARVEOUT_MASK:
-#ifdef ION_HEAP_TYPE_DMA_MASK
-		case ION_HEAP_TYPE_DMA_MASK:
-#endif
+		case ION_HEAP_TYPE_SYSTEM_CONTIG:
+		case ION_HEAP_TYPE_CARVEOUT:
+		case ION_HEAP_TYPE_DMA:
 			*min_pgsz = size;
 			break;
 #ifdef ION_HEAP_CHUNK_MASK
@@ -189,15 +187,17 @@ static int alloc_from_ion_heap(int ion_fd, size_t size, unsigned int *mask, unsi
 			break;
 		}
 	}
-	*mask = heap_mask;
+	*type = heap_type;
 
 	return shared_fd;
 }
 
 unsigned int pick_ion_heap(uint64_t usage)
 {
+#if 0
 	unsigned int heap_mask;
 
+    ALOGD("usage=0x%" PRIx64, usage);
 	if (usage & GRALLOC_USAGE_PROTECTED)
 	{
 #if defined(ION_HEAP_SECURE_MASK)
@@ -213,33 +213,74 @@ unsigned int pick_ion_heap(uint64_t usage)
 	{
 		heap_mask = ION_HEAP_TYPE_COMPOUND_PAGE_MASK;
 	}
+    xxx
 
 #elif defined(ION_HEAP_TYPE_DMA_MASK) && GRALLOC_USE_ION_DMA_HEAP
 	else if (!(usage & GRALLOC_USAGE_HW_VIDEO_ENCODER) && (usage & (GRALLOC_USAGE_HW_FB | GRALLOC_USAGE_HW_COMPOSER)))
 	{
 		heap_mask = ION_HEAP_TYPE_DMA_MASK;
 	}
+    yyyy
 
 #endif
 	else
 	{
-		heap_mask = ION_HEAP_SYSTEM_MASK;
+		heap_mask = ION_HEAP_TYPE_SYSTEM;
+        zzz
 	}
 
+    ALOGD("pick heap_mask=0x%x", heap_mask);
+
 	return heap_mask;
+#else
+	unsigned int heap_type;
+
+    ALOGD("usage=0x%" PRIx64, usage);
+	if (usage & GRALLOC_USAGE_PROTECTED)
+	{
+#if defined(ION_HEAP_SECURE_MASK)
+		heap_type = ION_HEAP_SECURE_MASK;
+#else
+		AERR("Protected ION memory is not supported on this platform.");
+		return 0;
+#endif
+	}
+
+#if GRALLOC_USE_ION_COMPOUND_PAGE_HEAP
+	else if (!(usage & GRALLOC_USAGE_HW_VIDEO_ENCODER) && (usage & (GRALLOC_USAGE_HW_FB | GRALLOC_USAGE_HW_COMPOSER)))
+	{
+		heap_type = ION_HEAP_TYPE_COMPOUND_PAGE;
+	}
+
+#elif GRALLOC_USE_ION_DMA_HEAP
+	else if (!(usage & GRALLOC_USAGE_HW_VIDEO_ENCODER) && (usage & (GRALLOC_USAGE_HW_FB | GRALLOC_USAGE_HW_COMPOSER)))
+	{
+		heap_type = ION_HEAP_TYPE_DMA;
+	}
+
+#endif
+	else
+	{
+		heap_type = ION_HEAP_TYPE_SYSTEM;
+	}
+
+    ALOGD("pick heap_mask=0x%x", 1<<heap_type);
+
+	return heap_type;
+#endif
 }
 
-void set_ion_flags(unsigned int heap_mask, uint64_t usage, unsigned int *priv_heap_flag, int *ion_flags)
+void set_ion_flags(unsigned int heap_type, uint64_t usage, unsigned int *priv_heap_flag, int *ion_flags)
 {
 #if !GRALLOC_USE_ION_DMA_HEAP
-	GRALLOC_UNUSED(heap_mask);
+	GRALLOC_UNUSED(heap_type);
 #endif
 
 	if (priv_heap_flag)
 	{
-#if defined(ION_HEAP_TYPE_DMA_MASK) && GRALLOC_USE_ION_DMA_HEAP
+#if GRALLOC_USE_ION_DMA_HEAP
 
-		if (heap_mask == ION_HEAP_TYPE_DMA_MASK)
+		if (heap_type == ION_HEAP_TYPE_DMA)
 		{
 			*priv_heap_flag = private_handle_t::PRIV_FLAGS_USES_ION_DMA_HEAP;
 		}
@@ -249,9 +290,9 @@ void set_ion_flags(unsigned int heap_mask, uint64_t usage, unsigned int *priv_he
 
 	if (ion_flags)
 	{
-#if defined(ION_HEAP_TYPE_DMA_MASK) && GRALLOC_USE_ION_DMA_HEAP
+#if GRALLOC_USE_ION_DMA_HEAP
 
-		if (heap_mask != ION_HEAP_TYPE_DMA_MASK)
+		if (heap_type != ION_HEAP_TYPE_DMA)
 		{
 #endif
 
@@ -260,7 +301,7 @@ void set_ion_flags(unsigned int heap_mask, uint64_t usage, unsigned int *priv_he
 				*ion_flags = ION_FLAG_CACHED | ION_FLAG_CACHED_NEEDS_SYNC;
 			}
 
-#if defined(ION_HEAP_TYPE_DMA_MASK) && GRALLOC_USE_ION_DMA_HEAP
+#if GRALLOC_USE_ION_DMA_HEAP
 		}
 
 #endif
@@ -281,30 +322,30 @@ static bool check_buffers_sharable(const gralloc_buffer_descriptor_t *descriptor
 
 	for (i = 0; i < numDescriptors; i++)
 	{
-		unsigned int heap_mask;
+		unsigned int heap_type;
 		int ion_flags;
 		buffer_descriptor_t *bufDescriptor = (buffer_descriptor_t *)descriptors[i];
 
 		usage = bufDescriptor->consumer_usage | bufDescriptor->producer_usage;
-		heap_mask = pick_ion_heap(usage);
+		heap_type = pick_ion_heap(usage);
 
-		if (0 == heap_mask)
+		if (0 == heap_type)
 		{
 			return false;
 		}
 
-		set_ion_flags(heap_mask, usage, NULL, &ion_flags);
+		set_ion_flags(heap_type, usage, NULL, &ion_flags);
 
 		if (0 != shared_backend_heap_mask)
 		{
-			if (shared_backend_heap_mask != heap_mask || shared_ion_flags != ion_flags)
+			if (shared_backend_heap_mask != (1<<heap_type) || shared_ion_flags != ion_flags)
 			{
 				return false;
 			}
 		}
 		else
 		{
-			shared_backend_heap_mask = heap_mask;
+			shared_backend_heap_mask = (1<<heap_type);
 			shared_ion_flags = ion_flags;
 		}
 	}
@@ -335,7 +376,7 @@ int mali_gralloc_ion_allocate(mali_gralloc_module *m, const gralloc_buffer_descr
                               uint32_t numDescriptors, buffer_handle_t *pHandle, bool *shared_backend)
 {
 	static int support_protected = 1; /* initially, assume we support protected memory */
-	unsigned int heap_mask, priv_heap_flag = 0;
+	unsigned int heap_type, priv_heap_flag = 0;
 	unsigned char *cpu_ptr = NULL;
 	uint64_t usage;
 	uint32_t i, max_buffer_index = 0;
@@ -363,27 +404,33 @@ int mali_gralloc_ion_allocate(mali_gralloc_module *m, const gralloc_buffer_descr
 		max_bufDescriptor = (buffer_descriptor_t *)(descriptors[max_buffer_index]);
 		usage = max_bufDescriptor->consumer_usage | max_bufDescriptor->producer_usage;
 
-		heap_mask = pick_ion_heap(usage);
+		heap_type = pick_ion_heap(usage);
 #if BOARD_RESOLUTION_RATIO == 720
 		if ((max_bufDescriptor->width > 1280) && (max_bufDescriptor->height > 720) && (usage & GRALLOC_USAGE_HW_COMPOSER))
 #else
 		if ((max_bufDescriptor->width > 1920) && (max_bufDescriptor->height > 1080) && (usage & GRALLOC_USAGE_HW_COMPOSER))
 #endif
 			{
-				heap_mask = ION_HEAP_SYSTEM_MASK;
+				heap_type = ION_HEAP_TYPE_SYSTEM;
 			}
 
-		if (heap_mask == 0)
+#if 0
+		if (heap_type == 0)
 		{
-			AERR("Failed to find an appropriate ion heap");
+            heap_type = ION_HEAP_TYPE_SYSTEM;
 			return -1;
 		}
+#else
+		if (heap_type == 0)
+			AERR("Failed to find an appropriate %dx%d ion heap suppose it is system heap",
+                    max_bufDescriptor->width, max_bufDescriptor->height);
+#endif
 
-		set_ion_flags(heap_mask, usage, &priv_heap_flag, &ion_flags);
+		set_ion_flags(heap_type, usage, &priv_heap_flag, &ion_flags);
 
-		shared_fd = alloc_from_ion_heap(m->ion_client, max_bufDescriptor->size, &heap_mask, ion_flags, &min_pgsz);
+		shared_fd = alloc_from_ion_heap(m->ion_client, max_bufDescriptor->size, &heap_type, ion_flags, &min_pgsz);
 
-		set_ion_flags(heap_mask, usage, &priv_heap_flag, NULL);
+		set_ion_flags(heap_type, usage, &priv_heap_flag, NULL);
 		if (shared_fd < 0)
 		{
 			AERR("ion_alloc failed form client: ( %d )", m->ion_client);
@@ -434,28 +481,34 @@ int mali_gralloc_ion_allocate(mali_gralloc_module *m, const gralloc_buffer_descr
 			buffer_descriptor_t *bufDescriptor = (buffer_descriptor_t *)(descriptors[i]);
 			usage = bufDescriptor->consumer_usage | bufDescriptor->producer_usage;
 
-			heap_mask = pick_ion_heap(usage);
+			heap_type = pick_ion_heap(usage);
 #if BOARD_RESOLUTION_RATIO == 720
 			if ((bufDescriptor->width > 1280) && (bufDescriptor->height > 720) && (usage & GRALLOC_USAGE_HW_COMPOSER))
 #else
 			if ((bufDescriptor->width > 1920) && (bufDescriptor->height > 1080) && (usage & GRALLOC_USAGE_HW_COMPOSER))
 #endif
 				{
-					heap_mask = ION_HEAP_SYSTEM_MASK;
+					heap_type = ION_HEAP_TYPE_SYSTEM;
 				}
 
-			if (heap_mask == 0)
+#if 0
+			if (heap_type == 0)
 			{
 				AERR("Failed to find an appropriate ion heap");
 				mali_gralloc_ion_free_internal(pHandle, numDescriptors);
 				return -1;
 			}
+#else
+			if (heap_type == 0)
+				AERR("Failed to find an appropriate ion heap, %dx%d, suppose to system heap 2\n",
+                        bufDescriptor->width, bufDescriptor->height);
+#endif
 
-			set_ion_flags(heap_mask, usage, &priv_heap_flag, &ion_flags);
+			set_ion_flags(heap_type, usage, &priv_heap_flag, &ion_flags);
 
-			shared_fd = alloc_from_ion_heap(m->ion_client, bufDescriptor->size, &heap_mask, ion_flags, &min_pgsz);
+			shared_fd = alloc_from_ion_heap(m->ion_client, bufDescriptor->size, &heap_type, ion_flags, &min_pgsz);
 
-			set_ion_flags(heap_mask, usage, &priv_heap_flag, NULL);
+			set_ion_flags(heap_type, usage, &priv_heap_flag, NULL);
 
 			if (shared_fd < 0)
 			{

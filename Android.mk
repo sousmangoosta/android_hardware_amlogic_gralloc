@@ -157,7 +157,7 @@ LOCAL_CFLAGS += -DGRALLOC_FB_SWAP_RED_BLUE=$(GRALLOC_FB_SWAP_RED_BLUE)
 LOCAL_CFLAGS += -DGRALLOC_ARM_NO_EXTERNAL_AFBC=$(GRALLOC_ARM_NO_EXTERNAL_AFBC)
 LOCAL_CFLAGS += -DGRALLOC_LIBRARY_BUILD=1
 
-LOCAL_SHARED_LIBRARIES := libhardware liblog libcutils libGLESv1_CM libion libsync libutils
+LOCAL_SHARED_LIBRARIES := libhardware liblog libcutils libGLESv1_CM libsync libutils
 
 LOCAL_PRELINK_MODULE := false
 LOCAL_MODULE_RELATIVE_PATH := hw
@@ -169,7 +169,10 @@ $(info TARGET_APP_LAYER_USE_CONTINUOUS_BUFFER is $(TARGET_APP_LAYER_USE_CONTINUO
 LOCAL_MODULE_TAGS := optional
 LOCAL_MULTILIB := both
 
+LOCAL_C_INCLUDES += system/core/libion/include
+
 LOCAL_SRC_FILES := \
+	ion_wrapper.cpp \
 	mali_gralloc_module.cpp \
 	framebuffer_device.cpp \
 	gralloc_buffer_priv.cpp \
