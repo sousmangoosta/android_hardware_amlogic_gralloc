@@ -21,6 +21,10 @@
 #include <inttypes.h>
 #include <cutils/log.h>
 
+#if PLATFORM_SDK_VERSION < 26
+#include <fcntl.h>
+#endif
+
 #if GRALLOC_USE_GRALLOC1_API == 1
 #include <hardware/gralloc1.h>
 #else
