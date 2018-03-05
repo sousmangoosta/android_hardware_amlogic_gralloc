@@ -246,6 +246,13 @@ void set_ion_flags(unsigned int heap_type, uint64_t usage, unsigned int *priv_he
 		}
 
 #endif
+
+		if (heap_type == ION_HEAP_TYPE_SYSTEM)
+		{
+			*priv_heap_flag &= ~private_handle_t::PRIV_FLAGS_USES_ION_DMA_HEAP;
+			*priv_heap_flag &= ~private_handle_t::PRIV_FLAGS_CONTINUOUS_BUF;
+		}
+
         if (usage & GRALLOC_USAGE_AML_VIDEO_OVERLAY)
         {
             *priv_heap_flag |= private_handle_t::PRIV_FLAGS_VIDEO_OVERLAY;
