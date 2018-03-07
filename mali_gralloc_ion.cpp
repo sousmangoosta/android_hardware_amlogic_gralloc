@@ -205,6 +205,8 @@ unsigned int pick_ion_heap(uint64_t usage)
 		AERR("Protected ION memory is not supported on this platform.");
 		return 0;
 #endif
+	} else if (usage & GRALLOC_USAGE_AML_DMA_BUFFER) {
+		heap_type = ION_HEAP_TYPE_CUSTOM;
 	}
 
 #if GRALLOC_USE_ION_COMPOUND_PAGE_HEAP
@@ -386,9 +388,9 @@ int mali_gralloc_ion_allocate(mali_gralloc_module *m, const gralloc_buffer_descr
 
 		heap_type = pick_ion_heap(usage);
 #if BOARD_RESOLUTION_RATIO == 720
-		if ((max_bufDescriptor->width > 1280) && (max_bufDescriptor->height > 720) && (usage & GRALLOC_USAGE_HW_COMPOSER))
+		if ((max_bufDescriptor->width > 1280) && (max_bufDescriptor->height > 720) && (usage & GRALLOC_USAGE_HW_COMPOSER) && !(usage & GRALLOC_USAGE_AML_DMA_BUFFER))
 #else
-		if ((max_bufDescriptor->width > 1920) && (max_bufDescriptor->height > 1080) && (usage & GRALLOC_USAGE_HW_COMPOSER))
+		if ((max_bufDescriptor->width > 1920) && (max_bufDescriptor->height > 1080) && (usage & GRALLOC_USAGE_HW_COMPOSER) && !(usage & GRALLOC_USAGE_AML_DMA_BUFFER))
 #endif
 			{
 				heap_type = ION_HEAP_TYPE_SYSTEM;
@@ -455,9 +457,9 @@ int mali_gralloc_ion_allocate(mali_gralloc_module *m, const gralloc_buffer_descr
 
 			heap_type = pick_ion_heap(usage);
 #if BOARD_RESOLUTION_RATIO == 720
-			if ((bufDescriptor->width > 1280) && (bufDescriptor->height > 720) && (usage & GRALLOC_USAGE_HW_COMPOSER))
+			if ((bufDescriptor->width > 1280) && (bufDescriptor->height > 720) && (usage & GRALLOC_USAGE_HW_COMPOSER) && !(usage & GRALLOC_USAGE_AML_DMA_BUFFER))
 #else
-			if ((bufDescriptor->width > 1920) && (bufDescriptor->height > 1080) && (usage & GRALLOC_USAGE_HW_COMPOSER))
+			if ((bufDescriptor->width > 1920) && (bufDescriptor->height > 1080) && (usage & GRALLOC_USAGE_HW_COMPOSER) && !(usage & GRALLOC_USAGE_AML_DMA_BUFFER))
 #endif
 				{
 					heap_type = ION_HEAP_TYPE_SYSTEM;
