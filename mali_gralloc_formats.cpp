@@ -517,8 +517,7 @@ int get_meson_dpu_gpu_caps()
 	{
 		osd_afbcd_enabled = atoi(osd_afbcd);
 	}
-
-	osd_afbcd_fd = open("/sys/class/graphics/fb0/osd_afbcd", O_RDWR, 0644);
+	osd_afbcd_fd = open("/sys/class/graphics/fb0/osd_afbcd", O_RDWR);
 	if (osd_afbcd_fd < 0) {
 		ALOGD("errno=%d, %s", errno, strerror(errno));
 		return -EPERM;
