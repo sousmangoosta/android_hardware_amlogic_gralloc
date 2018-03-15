@@ -907,7 +907,8 @@ int mali_gralloc_buffer_allocate(mali_gralloc_module *m, const gralloc_buffer_de
 		buffer_width = bufDescriptor->width;
 		usage = bufDescriptor->producer_usage | bufDescriptor->consumer_usage;
 #if PLATFORM_SDK_VERSION >= 24
-		if (usage & GRALLOC_USAGE_AML_OMX_OVERLAY)
+	        if ((usage & GRALLOC1_PRODUCER_USAGE_VIDEO_DECODER)
+				&&  !(usage & GRALLOC1_PRODUCER_USAGE_GPU_RENDER_TARGET))
 		{
 			bufDescriptor->width	= OMX_VIDEOLAYER_ALLOC_BUFFER_WIDTH;
 			bufDescriptor->height   = OMX_VIDEOLAYER_ALLOC_BUFFER_HEIGHT;
@@ -1004,7 +1005,8 @@ int mali_gralloc_buffer_allocate(mali_gralloc_module *m, const gralloc_buffer_de
 				return -EINVAL;
 			}
 #if PLATFORM_SDK_VERSION >= 24
-			if (usage & GRALLOC_USAGE_AML_OMX_OVERLAY)
+			if ((usage & GRALLOC1_PRODUCER_USAGE_VIDEO_DECODER)
+				&&	!(usage & GRALLOC1_PRODUCER_USAGE_GPU_RENDER_TARGET))
 			{
 				bufDescriptor->pixel_stride = buffer_width;
 			}
