@@ -153,6 +153,7 @@ static bool is_android_yuv_format(int req_format)
 	case HAL_PIXEL_FORMAT_YCbCr_420_888:
 	case HAL_PIXEL_FORMAT_YCbCr_422_888:
 	case HAL_PIXEL_FORMAT_YCbCr_444_888:
+	case HAL_PIXEL_FORMAT_YCrCb_420_SP:
 	case MALI_GRALLOC_FORMAT_INTERNAL_NV12:
 	case HAL_PIXEL_FORMAT_IMPLEMENTATION_DEFINED:
 		rval = true;
@@ -385,6 +386,8 @@ static uint64_t decode_internal_format(uint64_t req_format, mali_gralloc_format_
 	case MALI_GRALLOC_FORMAT_INTERNAL_RAW12:
 	case MALI_GRALLOC_FORMAT_INTERNAL_RAW10:
 	case MALI_GRALLOC_FORMAT_INTERNAL_BLOB:
+	case HAL_PIXEL_FORMAT_YCrCb_420_SP:
+	case HAL_PIXEL_FORMAT_YCbCr_420_888:
 	case MALI_GRALLOC_FORMAT_INTERNAL_NV12:
 	case MALI_GRALLOC_FORMAT_INTERNAL_NV21:
 	case MALI_GRALLOC_FORMAT_INTERNAL_YUV422_8BIT:
@@ -528,28 +531,29 @@ int get_meson_dpu_gpu_caps()
 	else
 		write(osd_afbcd_fd, "0", 1);
 
-    lseek(osd_afbcd_fd, 0, SEEK_SET);
-    read (osd_afbcd_fd, osd_afbcd, 1);
-    osd_afbcd_enabled = atoi(osd_afbcd);
-    ALOGD("AFBC %s\n", osd_afbcd_enabled == 1? "enabled":"disabled");
+	lseek(osd_afbcd_fd, 0, SEEK_SET);
+	read (osd_afbcd_fd, osd_afbcd, 1);
+	osd_afbcd_enabled = atoi(osd_afbcd);
+	ALOGD("AFBC %s\n", osd_afbcd_enabled == 1? "enabled":"disabled");
 
 	close (osd_afbcd_fd);
 	osd_afbcd_fd = -1;
 
-    if (osd_afbcd_enabled) {
-        dpu_runtime_caps.caps_mask |= MALI_GRALLOC_FORMAT_CAPABILITY_OPTIONS_PRESENT;
-        dpu_runtime_caps.caps_mask |= MALI_GRALLOC_FORMAT_CAPABILITY_AFBC_BASIC;
-        dpu_runtime_caps.caps_mask |= MALI_GRALLOC_FORMAT_CAPABILITY_AFBC_SPLITBLK;
-        dpu_runtime_caps.caps_mask |= MALI_GRALLOC_FORMAT_CAPABILITY_AFBC_WIDEBLK;
+	if (osd_afbcd_enabled) {
+		dpu_runtime_caps.caps_mask |= MALI_GRALLOC_FORMAT_CAPABILITY_OPTIONS_PRESENT;
+		dpu_runtime_caps.caps_mask |= MALI_GRALLOC_FORMAT_CAPABILITY_AFBC_BASIC;
+		dpu_runtime_caps.caps_mask |= MALI_GRALLOC_FORMAT_CAPABILITY_AFBC_SPLITBLK;
+		dpu_runtime_caps.caps_mask |= MALI_GRALLOC_FORMAT_CAPABILITY_AFBC_WIDEBLK;
 
-        gpu_runtime_caps.caps_mask |= MALI_GRALLOC_FORMAT_CAPABILITY_OPTIONS_PRESENT;
-        gpu_runtime_caps.caps_mask |= MALI_GRALLOC_FORMAT_CAPABILITY_AFBC_BASIC;
-        gpu_runtime_caps.caps_mask |= MALI_GRALLOC_FORMAT_CAPABILITY_AFBC_SPLITBLK;
-        gpu_runtime_caps.caps_mask |= MALI_GRALLOC_FORMAT_CAPABILITY_AFBC_WIDEBLK;
-        gpu_runtime_caps.caps_mask |= MALI_GRALLOC_FORMAT_CAPABILITY_AFBC_WIDEBLK_YUV_DISABLE;
-    }
+		gpu_runtime_caps.caps_mask |= MALI_GRALLOC_FORMAT_CAPABILITY_AFBC_YUV_NOWRITE;
+		gpu_runtime_caps.caps_mask |= MALI_GRALLOC_FORMAT_CAPABILITY_OPTIONS_PRESENT;
+		gpu_runtime_caps.caps_mask |= MALI_GRALLOC_FORMAT_CAPABILITY_AFBC_BASIC;
+		gpu_runtime_caps.caps_mask |= MALI_GRALLOC_FORMAT_CAPABILITY_AFBC_SPLITBLK;
+		gpu_runtime_caps.caps_mask |= MALI_GRALLOC_FORMAT_CAPABILITY_AFBC_WIDEBLK;
+		gpu_runtime_caps.caps_mask |= MALI_GRALLOC_FORMAT_CAPABILITY_AFBC_WIDEBLK_YUV_DISABLE;
+	}
 
-    return 0;
+	return 0;
 }
 /*
  * Here we determine format capabilities for the 4 IPs we support.
