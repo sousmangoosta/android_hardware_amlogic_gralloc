@@ -276,7 +276,8 @@ void set_ion_flags(unsigned int heap_type, uint64_t usage, unsigned int *priv_he
 	{
 #if GRALLOC_USE_ION_DMA_HEAP
 
-		if (heap_type != ION_HEAP_TYPE_DMA)
+		if ((heap_type != ION_HEAP_TYPE_DMA) &&
+			(heap_type != ION_HEAP_TYPE_CUSTOM))
 		{
 #endif
 
