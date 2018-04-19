@@ -39,6 +39,6 @@ LOCAL_C_INCLUDES := \
 	hardware/amlogic/gralloc
 LOCAL_SRC_FILES := \
 	amlogic/am_gralloc_internal.cpp
-LOCAL_MODULE := libamgralloc_internal
-include $(BUILD_SHARED_LIBRARY)
+LOCAL_MODULE := libamgralloc_internal_static
+include $(BUILD_STATIC_LIBRARY)
 
