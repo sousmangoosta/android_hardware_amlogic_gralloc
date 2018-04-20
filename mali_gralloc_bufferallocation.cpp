@@ -1013,7 +1013,7 @@ int mali_gralloc_buffer_allocate(mali_gralloc_module *m, const gralloc_buffer_de
 			}
 #ifdef GRALLOC_AML_EXTEND
 #if PLATFORM_SDK_VERSION >= 24
-			if (am_gralloc_is_omx_osd_extend_usage(usage))
+			if (am_gralloc_is_omx_metadata_extend_usage(usage))
 			{
 				bufDescriptor->pixel_stride = buffer_width;
 			}
