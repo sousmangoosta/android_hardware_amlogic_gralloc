@@ -83,6 +83,22 @@ int am_gralloc_get_stride_in_pixel(const native_handle_t * hnd) {
     return 0;
 }
 
+int am_gralloc_get_width(const native_handle_t * hnd) {
+    private_handle_t const* buffer = hnd ? private_handle_t::dynamicCast(hnd) : NULL;
+    if (buffer)
+        return buffer->width;
+
+    return 0;
+}
+
+int am_gralloc_get_height(const native_handle_t * hnd) {
+    private_handle_t const* buffer = hnd ? private_handle_t::dynamicCast(hnd) : NULL;
+    if (buffer)
+        return buffer->height;
+
+    return 0;
+}
+
 bool am_gralloc_is_secure_buffer(const native_handle_t *hnd) {
     private_handle_t const* buffer = hnd ? private_handle_t::dynamicCast(hnd) : NULL;
      if (NULL == buffer)
