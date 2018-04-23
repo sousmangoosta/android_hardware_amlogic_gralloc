@@ -50,7 +50,6 @@ bool am_gralloc_is_omx_osd_producer(uint64_t usage) {
     return false;
 }
 
-
 int am_gralloc_get_format(const native_handle_t * hnd) {
     private_handle_t const* buffer = hnd ? private_handle_t::dynamicCast(hnd) : NULL;
     if (buffer)
@@ -158,7 +157,7 @@ int am_gralloc_get_vpu_afbc_mask(const native_handle_t * hnd) {
     private_handle_t const* buffer = hnd ? private_handle_t::dynamicCast(hnd) : NULL;
 
     if (buffer) {
-        int internalFormat = buffer->internal_format;
+        uint64_t internalFormat = buffer->internal_format;
         int afbcFormat = 0;
 
         if (internalFormat & MALI_GRALLOC_INTFMT_AFBCENABLE_MASK) {
@@ -187,5 +186,4 @@ int am_gralloc_get_vpu_afbc_mask(const native_handle_t * hnd) {
 
     return 0;
 }
-
 
