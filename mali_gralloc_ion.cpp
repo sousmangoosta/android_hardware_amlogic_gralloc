@@ -737,9 +737,16 @@ void am_set_ion_flags(unsigned int heap_type, uint64_t usage,
 			*priv_heap_flag |= coherent_buffer_flag;
 		}
 
+		/*Must check omx metadata first,
+		*for it have some same bits with video overlay.
+		*/
 		if (am_gralloc_is_omx_metadata_extend_usage(usage))
 		{
 			*priv_heap_flag |= am_gralloc_get_omx_metadata_extend_flag();
+		}
+		else if (am_gralloc_is_video_overlay_extend_usage(usage))
+		{
+			*priv_heap_flag |= am_gralloc_get_video_overlay_extend_flag();
 		}
 	}
 
