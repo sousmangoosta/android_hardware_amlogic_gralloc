@@ -19,6 +19,7 @@ LOCAL_C_INCLUDES := \
 	hardware/amlogic/gralloc
 LOCAL_SRC_FILES := \
 	amlogic/am_gralloc_ext.cpp
+LOCAL_CFLAGS := -DLOG_TAG=\"gralloc_ext\"
 LOCAL_MODULE := libamgralloc_ext
 include $(BUILD_SHARED_LIBRARY)
 
