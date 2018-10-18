@@ -138,7 +138,7 @@ static bool is_afbc_supported(int req_format_mapped)
 	case MALI_GRALLOC_FORMAT_INTERNAL_P010:
 	case MALI_GRALLOC_FORMAT_INTERNAL_P210:
 	case MALI_GRALLOC_FORMAT_INTERNAL_Y410:
-#if PLATFORM_SDK_VERSION >= 26 && GPU_TYPE != mali450
+#if PLATFORM_SDK_VERSION >= 26 && GPU_FORMAT_LIMIT != 1
 	case MALI_GRALLOC_FORMAT_INTERNAL_RGBA_16161616:
 #endif
 	case HAL_PIXEL_FORMAT_YCbCr_422_I:
@@ -302,7 +302,7 @@ static uint64_t determine_best_format(int req_format, mali_gralloc_producer_type
 				internal_format |= MALI_GRALLOC_INTFMT_AFBC_TILED_HEADERS;
 			}
 
-#if PLATFORM_SDK_VERSION >= 26 && GPU_TYPE != mali450
+#if PLATFORM_SDK_VERSION >= 26 && GPU_FORMAT_LIMIT != 1
 			/*
 			 * Ensure requested format is supported by producer/consumer.
 			 * GPU composition must always be supported in case of fallback from DPU.
@@ -335,7 +335,7 @@ static uint64_t determine_best_format(int req_format, mali_gralloc_producer_type
 				internal_format |= MALI_GRALLOC_INTFMT_AFBC_TILED_HEADERS;
 			}
 
-#if PLATFORM_SDK_VERSION >= 26 && GPU_TYPE != mali450
+#if PLATFORM_SDK_VERSION >= 26 && GPU_FORMAT_LIMIT != 1
 			/* Reject unsupported formats */
 			if (req_format == MALI_GRALLOC_FORMAT_INTERNAL_RGBA_1010102 &&
 			    (gpu_mask & MALI_GRALLOC_FORMAT_CAPABILITY_PIXFMT_RGBA1010102) == 0)
@@ -368,7 +368,7 @@ static uint64_t determine_best_format(int req_format, mali_gralloc_producer_type
 				}
 			}
 
-#if PLATFORM_SDK_VERSION >= 26 && GPU_TYPE != mali450
+#if PLATFORM_SDK_VERSION >= 26 && GPU_FORMAT_LIMIT != 1
 			/* Reject unsupported formats */
 			if (req_format == MALI_GRALLOC_FORMAT_INTERNAL_RGBA_1010102 &&
 			    ((gpu_mask & MALI_GRALLOC_FORMAT_CAPABILITY_PIXFMT_RGBA1010102) == 0 ||
@@ -412,12 +412,12 @@ static uint64_t determine_best_format(int req_format, mali_gralloc_producer_type
 				}
 			}
 
-#if PLATFORM_SDK_VERSION >= 26 && GPU_TYPE != mali450
+#if PLATFORM_SDK_VERSION >= 26 && GPU_FORMAT_LIMIT != 1
 			/*
 			 * Ensure requested format is supported by producer/consumer.
 			 * GPU composition must always be supported in case of fallback from DPU.
 			 * It is therefore not necessary to enforce DPU support.
-			 */
+			*/
 			if (req_format == MALI_GRALLOC_FORMAT_INTERNAL_RGBA_1010102 &&
 			    ((vpu_mask & MALI_GRALLOC_FORMAT_CAPABILITY_PIXFMT_RGBA1010102) == 0 ||
 			     (gpu_mask & MALI_GRALLOC_FORMAT_CAPABILITY_PIXFMT_RGBA1010102) == 0))
@@ -451,7 +451,7 @@ static uint64_t determine_best_format(int req_format, mali_gralloc_producer_type
 				}
 			}
 
-#if PLATFORM_SDK_VERSION >= 26 && GPU_TYPE != mali450
+#if PLATFORM_SDK_VERSION >= 26 && GPU_FORMAT_LIMIT != 1
 			/* Reject unsupported formats */
 			if (req_format == MALI_GRALLOC_FORMAT_INTERNAL_RGBA_1010102 &&
 			    ((gpu_mask & MALI_GRALLOC_FORMAT_CAPABILITY_PIXFMT_RGBA1010102) == 0 ||
@@ -471,7 +471,7 @@ static uint64_t determine_best_format(int req_format, mali_gralloc_producer_type
 		{
 			/* Fall-through. To be decided.*/
 
-#if PLATFORM_SDK_VERSION >= 26 && GPU_TYPE != mali450
+#if PLATFORM_SDK_VERSION >= 26 && GPU_FORMAT_LIMIT != 1
 			/* Reject unsupported formats */
 			if (req_format == MALI_GRALLOC_FORMAT_INTERNAL_RGBA_1010102 &&
 			    (vpu_mask & MALI_GRALLOC_FORMAT_CAPABILITY_PIXFMT_RGBA1010102) == 0)
@@ -559,7 +559,7 @@ static uint64_t decode_internal_format(uint64_t req_format, mali_gralloc_format_
 	case MALI_GRALLOC_FORMAT_INTERNAL_RGB_888:
 	case MALI_GRALLOC_FORMAT_INTERNAL_RGB_565:
 	case MALI_GRALLOC_FORMAT_INTERNAL_BGRA_8888:
-#if PLATFORM_SDK_VERSION >= 26 && GPU_TYPE != mali450
+#if PLATFORM_SDK_VERSION >= 26 && GPU_FORMAT_LIMIT != 1
 	case MALI_GRALLOC_FORMAT_INTERNAL_RGBA_1010102:
 	case MALI_GRALLOC_FORMAT_INTERNAL_RGBA_16161616:
 #endif
@@ -729,7 +729,7 @@ int get_meson_dpu_gpu_caps()
 		gpu_runtime_caps.caps_mask |= MALI_GRALLOC_FORMAT_CAPABILITY_AFBC_BASIC;
 		gpu_runtime_caps.caps_mask |= MALI_GRALLOC_FORMAT_CAPABILITY_AFBC_SPLITBLK;
 		gpu_runtime_caps.caps_mask |= MALI_GRALLOC_FORMAT_CAPABILITY_AFBC_WIDEBLK;
-#if PLATFORM_SDK_VERSION >= 26 && GPU_TYPE != mali450
+#if PLATFORM_SDK_VERSION >= 26 && GPU_FORMAT_LIMIT != 1
 		gpu_runtime_caps.caps_mask |= MALI_GRALLOC_FORMAT_CAPABILITY_PIXFMT_RGBA1010102;
 		gpu_runtime_caps.caps_mask |= MALI_GRALLOC_FORMAT_CAPABILITY_PIXFMT_RGBA16161616;
 #endif
