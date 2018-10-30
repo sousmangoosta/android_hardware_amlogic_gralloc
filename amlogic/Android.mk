@@ -26,7 +26,7 @@ LOCAL_MODULE := libamgralloc_ext
 include $(BUILD_SHARED_LIBRARY)
 
 include $(CLEAR_VARS)
-LOCAL_PROPRIETARY_MODULE := true
+#LOCAL_PROPRIETARY_MODULE := true
 LOCAL_SHARED_LIBRARIES := liblog libcutils android.hardware.graphics.common@1.0
 LOCAL_C_INCLUDES := \
 	system/core/libutils/include \
