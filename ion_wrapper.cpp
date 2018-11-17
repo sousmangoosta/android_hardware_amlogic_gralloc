@@ -1,5 +1,5 @@
 /*
- *  ion.c
+ *  ion_wrapper.c
  *
  * Memory Allocator functions for ion
  *
