@@ -51,6 +51,11 @@
 #include "mali_gralloc_usages.h"
 #include "mali_gralloc_bufferdescriptor.h"
 
+#include <map>
+
+static std::map<int, ion_user_handle_t> imported_user_hnd;
+static std::map<int, int> imported_ion_client;
+
 #ifdef GRALLOC_AML_EXTEND
 unsigned int am_pick_ion_heap(
 	buffer_descriptor_t *bufDescriptor, uint64_t usage);
@@ -109,7 +114,6 @@ static void init_afbc(uint8_t *buf, uint64_t internal_format, int w, int h)
 
 static int alloc_from_ion_heap(int ion_fd, size_t size, unsigned int *type, unsigned int flags, int *min_pgsz)
 {
-	ion_user_handle_t ion_hnd = -1;
 	int shared_fd, ret;
 	unsigned int heap_type = *type;
 
@@ -126,7 +130,7 @@ static int alloc_from_ion_heap(int ion_fd, size_t size, unsigned int *type, unsi
 	 *            kernel will count the reference of file struct, so it's safe to
 	 *            be transfered between processes.
 	 */
-	ret = ion_alloc(ion_fd, size, 0, 1<<heap_type, flags, &ion_hnd);
+	ret = ion_alloc_fd(ion_fd, size, 0, 1<<heap_type, flags, &shared_fd);
 
 	if (ret < 0)
 	{
@@ -145,25 +149,8 @@ static int alloc_from_ion_heap(int ion_fd, size_t size, unsigned int *type, unsi
 			/* If everything else failed try system heap */
 			flags = 0; /* Fallback option flags are not longer valid */
 			heap_type = ION_HEAP_TYPE_SYSTEM;
-			ret = ion_alloc(ion_fd, size, 0, 1<<heap_type, flags, &ion_hnd);
+			ret = ion_alloc_fd(ion_fd, size, 0, 1<<heap_type, flags, &shared_fd);
 		}
-	}
-
-	ret = ion_share(ion_fd, ion_hnd, &shared_fd);
-
-	if (ret != 0)
-	{
-		AERR("ion_share( %d ) failed", ion_fd);
-		shared_fd = -1;
-	}
-
-	ret = ion_free(ion_fd, ion_hnd);
-
-	if (0 != ret)
-	{
-		AERR("ion_free( %d ) failed", ion_fd);
-		close(shared_fd);
-		shared_fd = -1;
 	}
 
 	if (ret >= 0)
@@ -637,7 +624,13 @@ int mali_gralloc_ion_map(private_handle_t *hnd)
 			}
 		}
 
+		ion_user_handle_t user_hnd;
+		ion_import(m->ion_client, hnd->share_fd, &user_hnd);
 		mappedAddress = (unsigned char *)mmap(NULL, size, PROT_READ | PROT_WRITE, MAP_SHARED, hnd->share_fd, 0);
+
+		imported_ion_client.emplace(hnd->share_fd, m->ion_client);
+		imported_user_hnd.emplace(hnd->share_fd, user_hnd);
+		ALOGD("ddebug, pair (share_fd=%d, user_hnd=%x, ion_client=%d)", hnd->share_fd, user_hnd, m->ion_client);
 
 		if (MAP_FAILED == mappedAddress)
 		{
@@ -665,6 +658,17 @@ void mali_gralloc_ion_unmap(private_handle_t *hnd)
 		if (munmap(base, size) < 0)
 		{
 			AERR("Could not munmap base:%p size:%zd '%s'", base, size, strerror(errno));
+		}
+
+		auto user_hnd_iter = imported_user_hnd.find(hnd->share_fd);
+		auto ion_client_iter = imported_ion_client.find(hnd->share_fd);
+		if (user_hnd_iter != imported_user_hnd.end()
+				&& ion_client_iter != imported_ion_client.end()) {
+			imported_user_hnd.erase(user_hnd_iter);
+			imported_ion_client.erase(ion_client_iter);
+			ALOGD("ddebug, free share_fd=%d, user_hnd=0x%x, ion client=%d\n",
+					hnd->share_fd, user_hnd_iter->second, ion_client_iter->second);
+			ion_free(ion_client_iter->second, user_hnd_iter->second);
 		}
 
 		break;
