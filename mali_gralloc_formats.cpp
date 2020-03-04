@@ -959,6 +959,17 @@ uint64_t mali_gralloc_select_format(uint64_t req_format, mali_gralloc_format_typ
 	{
 		producer_runtime_mask &= ~MALI_GRALLOC_FORMAT_CAPABILITY_AFBCENABLE_MASK;
 	}
+	else if ((usage & GRALLOC_USAGE_HW_FB) == GRALLOC_USAGE_HW_FB)
+	{
+#if PRIMARY_DISP_SUPPORT_AFBC == false
+		if ((usage & GRALLOC_USAGE_EXTERNAL_DISP) == 0)
+			producer_runtime_mask &= ~MALI_GRALLOC_FORMAT_CAPABILITY_AFBCENABLE_MASK;
+#endif
+#if EXTEND_DISP_SUPPORT_AFBC == false
+		if ((usage & GRALLOC_USAGE_EXTERNAL_DISP) == GRALLOC_USAGE_EXTERNAL_DISP)
+			producer_runtime_mask &= ~MALI_GRALLOC_FORMAT_CAPABILITY_AFBCENABLE_MASK;
+#endif
+	}
 	else
 	{
 		/* Check producer limitations and modify runtime mask.*/

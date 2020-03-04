@@ -490,7 +490,11 @@ int mali_gralloc_ion_allocate(mali_gralloc_module *m, const gralloc_buffer_descr
 				mali_gralloc_ion_free_internal(pHandle, numDescriptors);
 				return -1;
 			}
-
+			if (usage & GRALLOC_USAGE_HW_FB) {
+			AINF("FrameBuffer: usage:0x%" PRIx64 " format:%" PRIx64 " pixel_stride:%d width:%d height:%d heap_type:%d priv_heap_flag:%d",
+							usage, bufDescriptor->hal_format, bufDescriptor->pixel_stride,bufDescriptor->width, bufDescriptor->height,
+							heap_type, priv_heap_flag);
+			}
 			pHandle[i] = hnd;
 		}
 	}
