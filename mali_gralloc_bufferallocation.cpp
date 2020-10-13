@@ -1030,6 +1030,7 @@ int mali_gralloc_buffer_allocate(mali_gralloc_module *m, const gralloc_buffer_de
 			{
 				yv12_align = YUV_ANDROID_PLANE_ALIGN;
 			}
+			[[fallthrough]];
             /*
              * fallthrough
              */
